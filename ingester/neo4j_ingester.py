@@ -132,3 +132,18 @@ class MCIngester:
 
     def check_id_exists(self, pid):
         return self.db.check_id_exists(pid)
+
+    def get_all_models_with_locations(self):
+        """
+        Get all models with location URLs for validation
+        :return: List of model records with location URLs
+        """
+        return self.db.get_all_models_with_locations()
+
+    def update_model_card_orphan_status(self, model_id, is_orphan):
+        """
+        Update the orphan status of a model card
+        :param model_id: The model ID to update
+        :param is_orphan: Boolean indicating if the model is orphan
+        """
+        self.db.update_model_card_orphan_status(model_id, is_orphan)

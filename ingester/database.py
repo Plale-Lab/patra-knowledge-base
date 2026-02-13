@@ -774,3 +774,30 @@ class GraphDB:
         with self.driver.session() as session:
             result = session.run(query, model_id=model_id)
             return True if result.single() else False
+
+    def get_all_models_with_locations(self):
+        """
+        Retrieve all Model nodes with location URLs for validation
+        :return: List of records with model_id, name, version, location
+        """
+        query = """
+            MATCH (m:Model)
+            WHERE m.location IS NOT NULL AND m.location <> ""
+            RETURN m.model_id as model_id, m.name as name, m.version as version, m.location as location
+        """
+        with self.driver.session() as session:
+            result = session.run(query)
+            return list(result)
+
+    def update_model_card_orphan_status(self, model_id, is_orphan):
+        """
+        Update the is_orphan boolean field on ModelCard nodes
+        :param model_id: The model ID to update
+        :param is_orphan: Boolean indicating if the model is orphan
+        """
+        query = """
+            MATCH (mc:ModelCard {external_id: $model_id})
+            SET mc.is_orphan = $is_orphan
+        """
+        with self.driver.session() as session:
+            session.run(query, model_id=model_id, is_orphan=is_orphan)
