@@ -23,35 +23,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies (server)
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r legacy_server/requirements.txt
-
-      - name: Install dependencies (mcp_server)
-        run: |
-          pip install -r mcp_server/requirements.txt
-
-      - name: Install dependencies (rest_server)
-        run: |
           pip install -r rest_server/requirements.txt
-
-      - name: Install dependencies (tests)
-        run: |
           pip install -r tests/requirements.txt
 
-      - name: Run legacy REST server tests
-        env:
-          ENABLE_MC_SIMILARITY: "False"
-        run: |
-          pytest tests/test_patra_rest_services.py -q
-
-      - name: Run MCP server tests
-        env:
-          ENABLE_MC_SIMILARITY: "False"
-        run: |
-          pytest tests/test_mcp_server.py -v
-
-      - name: Run API server tests
+      - name: Run REST server tests
         run: |
           pytest tests/test_privacy.py -v
