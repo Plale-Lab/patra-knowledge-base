@@ -76,10 +76,19 @@ PRIVATE_DS_IDENTIFIERS = list(range(6, 11))
 def _ds_row(ident: int, private: bool) -> dict:
     return {
         "identifier": ident,
-        "title": f"Dataset {ident}",
-        "creator": "tester",
-        "category": "test",
+        "publication_year": 2024,
+        "resource_type": "images",
+        "resource_type_general": "Dataset",
+        "size": "1 GB",
+        "format": "jpeg",
+        "version": "1.0",
         "is_private": private,
+        "model_card_id": 1,
+        "dataset_schema_id": None,
+        # First title / creator / subject used in summary endpoint
+        "summary_title": f"Dataset {ident}",
+        "summary_creator": "tester",
+        "summary_category": "test",
     }
 
 
@@ -90,29 +99,95 @@ ALL_DS_ROWS = (
 PUBLIC_DS_ROWS = [_ds_row(i, False) for i in PUBLIC_DS_IDENTIFIERS]
 
 
-def _ds_detail_row(ident: int, private: bool, model_card_id: int | None = 1) -> dict:
+def _ds_detail_row(ident: int, private: bool) -> dict:
     base = _ds_row(ident, private)
     base.update({
-        "publisher": "Test Publisher",
-        "publication_year": 2024,
-        "resource_type": "images",
-        "size": "1 GB",
-        "format": "jpeg",
-        "version": "1.0",
-        "rights": "public",
-        "description": "Test dataset",
-        "geo_location": "global",
         "updated_at": None,
-        "alternate_identifier": None,
-        "related_identifier": None,
-        "model_card_id": model_card_id,
-        "dataset_schema_id": None,
+        # Publisher
+        "publisher_name": "Test Publisher",
+        "publisher_identifier": None,
+        "publisher_identifier_scheme": None,
+        "publisher_scheme_uri": None,
+        "publisher_lang": None,
+        # Creators
+        "creators": [
+            {
+                "creator_name": "tester",
+                "name_type": "Personal",
+                "lang": "en",
+                "given_name": "Test",
+                "family_name": f"User{ident}",
+                "name_identifier": None,
+                "name_identifier_scheme": None,
+                "name_id_scheme_uri": None,
+                "affiliation": "Test Org",
+                "affiliation_identifier": None,
+                "affiliation_identifier_scheme": None,
+                "affiliation_scheme_uri": None,
+            }
+        ],
+        # Titles
+        "titles": [
+            {
+                "title": f"Dataset {ident}",
+                "title_type": None,
+                "lang": "en",
+            }
+        ],
+        # Subjects
+        "subjects": [
+            {
+                "subject": "test",
+                "subject_scheme": None,
+                "scheme_uri": None,
+                "value_uri": None,
+                "classification_code": None,
+                "lang": "en",
+            }
+        ],
+        # Rights
+        "rights_list": [
+            {
+                "rights": "public",
+                "rights_uri": None,
+                "rights_identifier": None,
+                "rights_identifier_scheme": None,
+                "scheme_uri": None,
+                "lang": "en",
+            }
+        ],
+        # Descriptions
+        "descriptions": [
+            {
+                "description": "Test dataset",
+                "description_type": "Abstract",
+                "lang": "en",
+            }
+        ],
+        # Geo locations
+        "geo_locations": [
+            {
+                "geo_location_place": "global",
+                "point_longitude": None,
+                "point_latitude": None,
+                "box_west": None,
+                "box_east": None,
+                "box_south": None,
+                "box_north": None,
+                "polygon": None,
+            }
+        ],
+        # Empty lists for other nested fields
+        "contributors": [],
+        "dates": [],
+        "alternate_identifiers": [],
+        "related_identifiers": [],
+        "funding_references": [],
     })
     return base
 
 
 # ── Mock pool ────────────────────────────────────────────────────────────────
-
 def _make_mock_pool():
     pool = MagicMock()
     conn = AsyncMock()
@@ -123,11 +198,64 @@ def _make_mock_pool():
             limit = args[0] if args else 50
             offset = args[1] if len(args) > 1 else 0
             return rows[offset : offset + limit]
-        if "datasheets" in query:
-            rows = PUBLIC_DS_ROWS if "is_private = false" in query else ALL_DS_ROWS
+        if "FROM datasheets d" in query:
+            base_rows = PUBLIC_DS_ROWS if "d.is_private = false" in query else ALL_DS_ROWS
             limit = args[0] if args else 50
             offset = args[1] if len(args) > 1 else 0
-            return rows[offset : offset + limit]
+            sliced = base_rows[offset : offset + limit]
+            return [
+                {
+                    "identifier": r["identifier"],
+                    "title": r["summary_title"],
+                    "creator": r["summary_creator"],
+                    "category": r["summary_category"],
+                }
+                for r in sliced
+            ]
+        if "FROM datasheet_creators" in query and args:
+            ident = args[0]
+            private = ident in PRIVATE_DS_IDENTIFIERS
+            return _ds_detail_row(ident, private)["creators"]
+        if "FROM datasheet_titles" in query and args:
+            ident = args[0]
+            private = ident in PRIVATE_DS_IDENTIFIERS
+            return _ds_detail_row(ident, private)["titles"]
+        if "FROM datasheet_subjects" in query and args:
+            ident = args[0]
+            private = ident in PRIVATE_DS_IDENTIFIERS
+            return _ds_detail_row(ident, private)["subjects"]
+        if "FROM datasheet_contributors" in query and args:
+            ident = args[0]
+            private = ident in PRIVATE_DS_IDENTIFIERS
+            return _ds_detail_row(ident, private)["contributors"]
+        if "FROM datasheet_dates" in query and args:
+            ident = args[0]
+            private = ident in PRIVATE_DS_IDENTIFIERS
+            return _ds_detail_row(ident, private)["dates"]
+        if "FROM datasheet_alternate_identifiers" in query and args:
+            ident = args[0]
+            private = ident in PRIVATE_DS_IDENTIFIERS
+            return _ds_detail_row(ident, private)["alternate_identifiers"]
+        if "FROM datasheet_related_identifiers" in query and args:
+            ident = args[0]
+            private = ident in PRIVATE_DS_IDENTIFIERS
+            return _ds_detail_row(ident, private)["related_identifiers"]
+        if "FROM datasheet_rights" in query and args:
+            ident = args[0]
+            private = ident in PRIVATE_DS_IDENTIFIERS
+            return _ds_detail_row(ident, private)["rights_list"]
+        if "FROM datasheet_descriptions" in query and args:
+            ident = args[0]
+            private = ident in PRIVATE_DS_IDENTIFIERS
+            return _ds_detail_row(ident, private)["descriptions"]
+        if "FROM datasheet_geo_locations" in query and args:
+            ident = args[0]
+            private = ident in PRIVATE_DS_IDENTIFIERS
+            return _ds_detail_row(ident, private)["geo_locations"]
+        if "FROM datasheet_funding_references" in query and args:
+            ident = args[0]
+            private = ident in PRIVATE_DS_IDENTIFIERS
+            return _ds_detail_row(ident, private)["funding_references"]
         return []
 
     async def _fetchrow(query: str, *args):
@@ -137,12 +265,11 @@ def _make_mock_pool():
             if isinstance(mc_id, int) and mc_id in ALL_MC_IDS:
                 return _mc_detail_row(mc_id, mc_id in PRIVATE_MC_IDS)
             return None
-        if "datasheets" in query and args:
+        if "FROM datasheets d" in query and args:
             ident = args[0]
             if ident in PUBLIC_DS_IDENTIFIERS or ident in PRIVATE_DS_IDENTIFIERS:
                 private = ident in PRIVATE_DS_IDENTIFIERS
-                model_card_id = None if ident in (8, 9) else 1
-                return _ds_detail_row(ident, private, model_card_id=model_card_id)
+                return _ds_detail_row(ident, private)
             return None
         return None
 
@@ -158,7 +285,6 @@ def _make_mock_pool():
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
-
 @pytest.fixture()
 def client():
     """TestClient with a mocked DB pool (no real database needed)."""

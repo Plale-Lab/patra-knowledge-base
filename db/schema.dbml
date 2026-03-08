@@ -27,6 +27,15 @@ Table dataset_schemas {
   updated_at timestamptz [not null]
 }
 
+Table publishers {
+  id bigint [pk, increment]
+  name text [not null]
+  publisher_identifier text
+  publisher_identifier_scheme text
+  scheme_uri text
+  lang text
+}
+
 Table model_cards {
   id bigint [pk, increment]
   name text [not null]
@@ -50,33 +59,172 @@ Table model_cards {
 
 Table datasheets {
   identifier bigint [pk, increment]
-  creator text
-  title text [not null]
-  publisher text
   publication_year integer
   resource_type text
+  resource_type_general text
   size text
   format text
   version text
-  rights text
-  description text
-  geo_location text
-  category text
   is_private boolean [not null, default: false]
   status approval_status [not null, default: 'pending']
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
-  alternate_identifier text
-  related_identifier text
 
   model_card_id bigint [ref: > model_cards.id]
   dataset_schema_id bigint [ref: > dataset_schemas.id]
+  publisher_id bigint [ref: > publishers.id]
 
   indexes {
     (model_card_id)
     (dataset_schema_id)
     (status)
+    (publisher_id)
   }
+}
+
+Table datasheet_creators {
+  id bigint [pk, increment]
+  datasheet_id bigint [not null, ref: > datasheets.identifier]
+
+  creator_name text [not null]
+  name_type text
+  lang text
+
+  given_name text
+  family_name text
+
+  name_identifier text
+  name_identifier_scheme text
+  name_id_scheme_uri text
+
+  affiliation text
+  affiliation_identifier text
+  affiliation_identifier_scheme text
+  affiliation_scheme_uri text
+}
+
+Table datasheet_titles {
+  id bigint [pk, increment]
+  datasheet_id bigint [not null, ref: > datasheets.identifier]
+
+  title text [not null]
+  title_type text
+  lang text
+}
+
+Table datasheet_subjects {
+  id bigint [pk, increment]
+  datasheet_id bigint [not null, ref: > datasheets.identifier]
+
+  subject text [not null]
+  subject_scheme text
+  scheme_uri text
+  value_uri text
+  classification_code text
+  lang text
+}
+
+Table datasheet_contributors {
+  id bigint [pk, increment]
+  datasheet_id bigint [not null, ref: > datasheets.identifier]
+
+  contributor_type text [not null]
+  contributor_name text [not null]
+  name_type text
+
+  given_name text
+  family_name text
+
+  name_identifier text
+  name_identifier_scheme text
+  name_id_scheme_uri text
+
+  affiliation text
+  affiliation_identifier text
+  affiliation_identifier_scheme text
+  affiliation_scheme_uri text
+}
+
+Table datasheet_dates {
+  id bigint [pk, increment]
+  datasheet_id bigint [not null, ref: > datasheets.identifier]
+
+  date text [not null] // RKMS-ISO8601
+  date_type text [not null]
+  date_information text
+}
+
+Table datasheet_alternate_identifiers {
+  id bigint [pk, increment]
+  datasheet_id bigint [not null, ref: > datasheets.identifier]
+
+  alternate_identifier text [not null]
+  alternate_identifier_type text [not null]
+}
+
+Table datasheet_related_identifiers {
+  id bigint [pk, increment]
+  datasheet_id bigint [not null, ref: > datasheets.identifier]
+
+  related_identifier text [not null]
+  related_identifier_type text [not null]
+  relation_type text [not null]
+
+  related_metadata_scheme text
+  scheme_uri text
+  scheme_type text
+  resource_type_general text
+}
+
+Table datasheet_rights {
+  id bigint [pk, increment]
+  datasheet_id bigint [not null, ref: > datasheets.identifier]
+
+  rights text
+  rights_uri text
+  rights_identifier text
+  rights_identifier_scheme text
+  scheme_uri text
+  lang text
+}
+
+Table datasheet_descriptions {
+  id bigint [pk, increment]
+  datasheet_id bigint [not null, ref: > datasheets.identifier]
+
+  description text [not null]
+  description_type text [not null]
+  lang text
+}
+
+Table datasheet_geo_locations {
+  id bigint [pk, increment]
+  datasheet_id bigint [not null, ref: > datasheets.identifier]
+
+  geo_location_place text
+
+  point_longitude numeric
+  point_latitude numeric
+
+  box_west numeric
+  box_east numeric
+  box_south numeric
+  box_north numeric
+
+  polygon jsonb
+}
+
+Table datasheet_funding_references {
+  id bigint [pk, increment]
+  datasheet_id bigint [not null, ref: > datasheets.identifier]
+
+  funder_name text [not null]
+  funder_identifier text
+  funder_identifier_type text
+  scheme_uri text
+  award_number text
+  award_uri text
+  award_title text
 }
 
 Table models {

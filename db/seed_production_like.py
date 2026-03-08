@@ -225,13 +225,24 @@ async def seed():
     print("Connected.")
 
     async with conn.transaction():
-        # Child tables first; no deployments table. RESTART IDENTITY so serials reset.
         truncate_tables = [
             "experiment_images",
             "experiments",
             "raw_images",
+            "datasheet_funding_references",
+            "datasheet_geo_locations",
+            "datasheet_descriptions",
+            "datasheet_rights",
+            "datasheet_related_identifiers",
+            "datasheet_alternate_identifiers",
+            "datasheet_dates",
+            "datasheet_contributors",
+            "datasheet_subjects",
+            "datasheet_titles",
+            "datasheet_creators",
             "datasheets",
             "models",
+            "publishers",
             "model_cards",
             "dataset_schemas",
             "edge_devices",
@@ -241,7 +252,6 @@ async def seed():
             await conn.execute(f"TRUNCATE TABLE {t} RESTART IDENTITY CASCADE")
         print("Truncated all tables.")
 
-        # Users: id serial, created_at, updated_at
         for _ in range(NUM_USERS):
             await conn.execute(
                 "INSERT INTO users (created_at, updated_at) VALUES ($1, $2)",
@@ -250,7 +260,6 @@ async def seed():
             )
         print(f"Inserted {NUM_USERS} users.")
 
-        # Edge devices
         for _ in range(NUM_EDGE_DEVICES):
             await conn.execute(
                 "INSERT INTO edge_devices (created_at, updated_at) VALUES ($1, $2)",
@@ -259,7 +268,6 @@ async def seed():
             )
         print(f"Inserted {NUM_EDGE_DEVICES} edge devices.")
 
-        # Model cards: id 1..10 (serial), plus audit timestamps
         for mc in MODEL_CARDS:
             await conn.execute(
                 """INSERT INTO model_cards (
@@ -288,7 +296,6 @@ async def seed():
             )
         print(f"Inserted {len(MODEL_CARDS)} model cards.")
 
-        # Models: id 1..10, model_card_id 1..10, created_at, updated_at
         for i, m in enumerate(MODELS):
             model_card_id = i + 1
             await conn.execute(
@@ -312,32 +319,93 @@ async def seed():
             )
         print(f"Inserted {len(MODELS)} models.")
 
-        # Datasheets: identifier serial, model_card_id optional
         for ds in DATASHEETS:
-            await conn.execute(
-                """INSERT INTO datasheets (
-                    creator, title, publisher, publication_year,
-                    resource_type, size, format, version, rights, description,
-                    geo_location, category, is_private,
-                    created_at, updated_at, model_card_id
-                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)""",
-                ds["creator"],
-                ds["title"],
+            publisher_id = await conn.fetchval(
+                "INSERT INTO publishers (name) VALUES ($1) RETURNING id",
                 ds["publisher"],
+            )
+
+            datasheet_id = await conn.fetchval(
+                """INSERT INTO datasheets (
+                    publication_year,
+                    resource_type,
+                    resource_type_general,
+                    size,
+                    format,
+                    version,
+                    is_private,
+                    status,
+                    created_at,
+                    updated_at,
+                    model_card_id,
+                    publisher_id
+                ) VALUES ($1,$2,$3,$4,$5,$6,$7,'pending',$8,$9,$10,$11)
+                RETURNING identifier
+                """,
                 ds["publication_year"],
                 ds["resource_type"],
+                "Dataset",
                 ds["size"],
                 ds["format"],
                 ds["version"],
-                ds["rights"],
-                ds["description"],
-                ds["geo_location"],
-                ds["category"],
                 ds["is_private"],
                 _NOW,
                 _NOW,
                 ds["model_card_id"],
+                publisher_id,
             )
+
+            await conn.execute(
+                """INSERT INTO datasheet_creators (
+                    datasheet_id, creator_name
+                ) VALUES ($1,$2)""",
+                datasheet_id,
+                ds["creator"],
+            )
+
+            await conn.execute(
+                """INSERT INTO datasheet_titles (
+                    datasheet_id, title
+                ) VALUES ($1,$2)""",
+                datasheet_id,
+                ds["title"],
+            )
+
+            if ds.get("category"):
+                await conn.execute(
+                    """INSERT INTO datasheet_subjects (
+                        datasheet_id, subject
+                    ) VALUES ($1,$2)""",
+                    datasheet_id,
+                    ds["category"],
+                )
+
+            if ds.get("rights"):
+                await conn.execute(
+                    """INSERT INTO datasheet_rights (
+                        datasheet_id, rights
+                    ) VALUES ($1,$2)""",
+                    datasheet_id,
+                    ds["rights"],
+                )
+
+            if ds.get("description"):
+                await conn.execute(
+                    """INSERT INTO datasheet_descriptions (
+                        datasheet_id, description, description_type
+                    ) VALUES ($1,$2,'Abstract')""",
+                    datasheet_id,
+                    ds["description"],
+                )
+
+            if ds.get("geo_location"):
+                await conn.execute(
+                    """INSERT INTO datasheet_geo_locations (
+                        datasheet_id, geo_location_place
+                    ) VALUES ($1,$2)""",
+                    datasheet_id,
+                    ds["geo_location"],
+                )
         print(f"Inserted {len(DATASHEETS)} datasheets.")
 
     await conn.close()

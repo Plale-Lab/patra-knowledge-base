@@ -51,7 +51,117 @@ class ModelCardDetail(BaseModel):
     ai_model: Optional[AIModel] = None
 
 
-# --- Datasheets ---
+# --- Datasheets (DataCite 4.5-style) ---
+
+
+class DatasheetCreator(BaseModel):
+    creator_name: str
+    name_type: Optional[str] = None
+    lang: Optional[str] = None
+    given_name: Optional[str] = None
+    family_name: Optional[str] = None
+    name_identifier: Optional[str] = None
+    name_identifier_scheme: Optional[str] = None
+    name_id_scheme_uri: Optional[str] = None
+    affiliation: Optional[str] = None
+    affiliation_identifier: Optional[str] = None
+    affiliation_identifier_scheme: Optional[str] = None
+    affiliation_scheme_uri: Optional[str] = None
+
+
+class DatasheetTitle(BaseModel):
+    title: str
+    title_type: Optional[str] = None
+    lang: Optional[str] = None
+
+
+class DatasheetPublisher(BaseModel):
+    name: str
+    publisher_identifier: Optional[str] = None
+    publisher_identifier_scheme: Optional[str] = None
+    scheme_uri: Optional[str] = None
+    lang: Optional[str] = None
+
+
+class DatasheetSubject(BaseModel):
+    subject: str
+    subject_scheme: Optional[str] = None
+    scheme_uri: Optional[str] = None
+    value_uri: Optional[str] = None
+    classification_code: Optional[str] = None
+    lang: Optional[str] = None
+
+
+class DatasheetContributor(BaseModel):
+    contributor_type: str
+    contributor_name: str
+    name_type: Optional[str] = None
+    given_name: Optional[str] = None
+    family_name: Optional[str] = None
+    name_identifier: Optional[str] = None
+    name_identifier_scheme: Optional[str] = None
+    name_id_scheme_uri: Optional[str] = None
+    affiliation: Optional[str] = None
+    affiliation_identifier: Optional[str] = None
+    affiliation_identifier_scheme: Optional[str] = None
+    affiliation_scheme_uri: Optional[str] = None
+
+
+class DatasheetDate(BaseModel):
+    date: str
+    date_type: str
+    date_information: Optional[str] = None
+
+
+class DatasheetAlternateIdentifier(BaseModel):
+    alternate_identifier: str
+    alternate_identifier_type: str
+
+
+class DatasheetRelatedIdentifier(BaseModel):
+    related_identifier: str
+    related_identifier_type: str
+    relation_type: str
+    related_metadata_scheme: Optional[str] = None
+    scheme_uri: Optional[str] = None
+    scheme_type: Optional[str] = None
+    resource_type_general: Optional[str] = None
+
+
+class DatasheetRights(BaseModel):
+    rights: Optional[str] = None
+    rights_uri: Optional[str] = None
+    rights_identifier: Optional[str] = None
+    rights_identifier_scheme: Optional[str] = None
+    scheme_uri: Optional[str] = None
+    lang: Optional[str] = None
+
+
+class DatasheetDescription(BaseModel):
+    description: str
+    description_type: str
+    lang: Optional[str] = None
+
+
+class DatasheetGeoLocation(BaseModel):
+    geo_location_place: Optional[str] = None
+    point_longitude: Optional[float] = None
+    point_latitude: Optional[float] = None
+    box_west: Optional[float] = None
+    box_east: Optional[float] = None
+    box_south: Optional[float] = None
+    box_north: Optional[float] = None
+    polygon: Optional[dict] = None
+
+
+class DatasheetFundingReference(BaseModel):
+    funder_name: str
+    funder_identifier: Optional[str] = None
+    funder_identifier_type: Optional[str] = None
+    scheme_uri: Optional[str] = None
+    award_number: Optional[str] = None
+    award_uri: Optional[str] = None
+    award_title: Optional[str] = None
 
 
 class DatasheetSummary(BaseModel):
@@ -64,24 +174,30 @@ class DatasheetSummary(BaseModel):
 
 
 class DatasheetDetail(BaseModel):
-    """Detail endpoint: all datasheet columns."""
+    """Detail endpoint: DataCite-style nested structure plus selected flat fields."""
 
     identifier: int
-    creator: Optional[str] = None
-    title: str
-    publisher: Optional[str] = None
     publication_year: Optional[int] = None
     resource_type: Optional[str] = None
+    resource_type_general: Optional[str] = None
     size: Optional[str] = None
     format: Optional[str] = None
     version: Optional[str] = None
-    rights: Optional[str] = None
-    description: Optional[str] = None
-    geo_location: Optional[str] = None
-    category: Optional[str] = None
     is_private: bool = False
     updated_at: Optional[str] = None
-    alternate_identifier: Optional[str] = None
-    related_identifier: Optional[str] = None
     model_card_id: Optional[int] = None
     dataset_schema_id: Optional[int] = None
+
+    # Nested DataCite-style lists / objects
+    creators: list[DatasheetCreator] = []
+    titles: list[DatasheetTitle] = []
+    publisher: Optional[DatasheetPublisher] = None
+    subjects: list[DatasheetSubject] = []
+    contributors: list[DatasheetContributor] = []
+    dates: list[DatasheetDate] = []
+    alternate_identifiers: list[DatasheetAlternateIdentifier] = []
+    related_identifiers: list[DatasheetRelatedIdentifier] = []
+    rights_list: list[DatasheetRights] = []
+    descriptions: list[DatasheetDescription] = []
+    geo_locations: list[DatasheetGeoLocation] = []
+    funding_references: list[DatasheetFundingReference] = []
