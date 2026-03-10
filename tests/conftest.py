@@ -29,6 +29,7 @@ def _mc_row(mc_id: int, private: bool) -> dict:
         "version": "1.0",
         "short_description": f"Description for {mc_id}",
         "is_private": private,
+        "is_gated": False,
     }
 
 
@@ -83,7 +84,6 @@ def _ds_row(ident: int, private: bool) -> dict:
         "format": "jpeg",
         "version": "1.0",
         "is_private": private,
-        "model_card_id": 1,
         "dataset_schema_id": None,
         # First title / creator / subject used in summary endpoint
         "summary_title": f"Dataset {ident}",

@@ -15,6 +15,7 @@ class ModelCardSummary(BaseModel):
     author: Optional[str] = None
     version: Optional[str] = None
     short_description: Optional[str] = None
+    is_gated: bool = False
 
 
 class AIModel(BaseModel):
@@ -48,6 +49,7 @@ class ModelCardDetail(BaseModel):
     categories: Optional[str] = None
     citation: Optional[str] = None
     foundational_model: Optional[str] = None
+    is_gated: bool = False
     ai_model: Optional[AIModel] = None
 
 
@@ -185,7 +187,6 @@ class DatasheetDetail(BaseModel):
     version: Optional[str] = None
     is_private: bool = False
     updated_at: Optional[str] = None
-    model_card_id: Optional[int] = None
     dataset_schema_id: Optional[int] = None
 
     # Nested DataCite-style lists / objects

@@ -196,19 +196,18 @@ MODELS = [
     {"name": "YOLO", "version": "26x", "description": "Extra-large YOLO26 for maximum accuracy.", "owner": "Ultralytics", "location": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26x.pt", "license": "AGPL-3.0 License", "framework": "PyTorch", "model_type": "convolutional neural network", "test_accuracy": 0.88},
 ]
 
-# ── Datasheets: 5 public + 5 private; model_card_id optional (2 without) ─────
-# identifier 8 and 9 have model_card_id = None to show standalone datasheets
+# ── Datasheets: 5 public + 5 private (independent of model cards) ─────────────
 DATASHEETS = [
-    {"creator": "wqiu", "title": "LILA Camera Traps", "publisher": "LILA BC", "publication_year": 2021, "resource_type": "images", "size": "3 TB", "format": "jpeg", "version": "1.0", "rights": "public", "description": "Labelled camera-trap images from LILA BC.", "geo_location": "global", "category": "wildlife", "is_private": False, "model_card_id": 2},
-    {"creator": "jstubbs", "title": "ImageNet-1K", "publisher": "Stanford / Princeton", "publication_year": 2012, "resource_type": "images", "size": "150 GB", "format": "jpeg", "version": "1.0", "rights": "academic", "description": "1000-class subset of the ImageNet dataset.", "geo_location": "global", "category": "classification", "is_private": False, "model_card_id": 3},
-    {"creator": "nkarthikeyan", "title": "MNIST", "publisher": "NYU", "publication_year": 1998, "resource_type": "images", "size": "50 MB", "format": "idx", "version": "1.0", "rights": "public", "description": "Handwritten digit images 0-9.", "geo_location": "global", "category": "classification", "is_private": False, "model_card_id": 1},
-    {"creator": "skhuvis", "title": "MS COCO 2017", "publisher": "cocodataset.org", "publication_year": 2017, "resource_type": "images", "size": "25 GB", "format": "jpeg", "version": "2017", "rights": "CC BY 4.0", "description": "Common Objects in Context detection/segmentation dataset.", "geo_location": "global", "category": "detection", "is_private": False, "model_card_id": 5},
-    {"creator": "cgarcia", "title": "ImageNet ResNet Subset", "publisher": "Stanford / Princeton", "publication_year": 2015, "resource_type": "images", "size": "12 GB", "format": "jpeg", "version": "1.0", "rights": "academic", "description": "Curated ImageNet subset for ResNet50 benchmarking.", "geo_location": "global", "category": "classification", "is_private": False, "model_card_id": 4},
-    {"creator": "rcardone", "title": "OSA Camera Traps", "publisher": "Open Science Alliance", "publication_year": 2024, "resource_type": "images", "size": "18 GB", "format": "jpeg", "version": "1.0", "rights": "research-only", "description": "OSA partner camera-trap imagery for fine-tuning.", "geo_location": "US", "category": "wildlife", "is_private": True, "model_card_id": 6},
-    {"creator": "wqiu", "title": "ENA Wildlife Survey", "publisher": "ICICLE", "publication_year": 2024, "resource_type": "images", "size": "32 GB", "format": "jpeg", "version": "1.0", "rights": "research-only", "description": "Endangered North American species camera-trap survey.", "geo_location": "US", "category": "wildlife", "is_private": True, "model_card_id": 7},
-    {"creator": "skhuvis", "title": "Soft Toy Inventory Frames", "publisher": "Internal", "publication_year": 2025, "resource_type": "images", "size": "2 GB", "format": "jpeg", "version": "1.0", "rights": "internal", "description": "Camera frames labelled with soft-toy bounding boxes.", "geo_location": "US", "category": "detection", "is_private": True, "model_card_id": None},
-    {"creator": "skhuvis", "title": "YOLO26 Edge Benchmark", "publisher": "Ultralytics", "publication_year": 2025, "resource_type": "images", "size": "8 GB", "format": "jpeg", "version": "1.0", "rights": "internal", "description": "Edge device evaluation images for YOLO26n benchmarking.", "geo_location": "global", "category": "detection", "is_private": True, "model_card_id": None},
-    {"creator": "skhuvis", "title": "YOLO26x High-Res Evaluation", "publisher": "Ultralytics", "publication_year": 2025, "resource_type": "images", "size": "45 GB", "format": "png", "version": "1.0", "rights": "internal", "description": "High-resolution evaluation set for YOLO26x accuracy testing.", "geo_location": "global", "category": "detection", "is_private": True, "model_card_id": 10},
+    {"creator": "wqiu", "title": "LILA Camera Traps", "publisher": "LILA BC", "publication_year": 2021, "resource_type": "images", "size": "3 TB", "format": "jpeg", "version": "1.0", "rights": "public", "description": "Labelled camera-trap images from LILA BC.", "geo_location": "global", "category": "wildlife", "is_private": False},
+    {"creator": "jstubbs", "title": "ImageNet-1K", "publisher": "Stanford / Princeton", "publication_year": 2012, "resource_type": "images", "size": "150 GB", "format": "jpeg", "version": "1.0", "rights": "academic", "description": "1000-class subset of the ImageNet dataset.", "geo_location": "global", "category": "classification", "is_private": False},
+    {"creator": "nkarthikeyan", "title": "MNIST", "publisher": "NYU", "publication_year": 1998, "resource_type": "images", "size": "50 MB", "format": "idx", "version": "1.0", "rights": "public", "description": "Handwritten digit images 0-9.", "geo_location": "global", "category": "classification", "is_private": False},
+    {"creator": "skhuvis", "title": "MS COCO 2017", "publisher": "cocodataset.org", "publication_year": 2017, "resource_type": "images", "size": "25 GB", "format": "jpeg", "version": "2017", "rights": "CC BY 4.0", "description": "Common Objects in Context detection/segmentation dataset.", "geo_location": "global", "category": "detection", "is_private": False},
+    {"creator": "cgarcia", "title": "ImageNet ResNet Subset", "publisher": "Stanford / Princeton", "publication_year": 2015, "resource_type": "images", "size": "12 GB", "format": "jpeg", "version": "1.0", "rights": "academic", "description": "Curated ImageNet subset for ResNet50 benchmarking.", "geo_location": "global", "category": "classification", "is_private": False},
+    {"creator": "rcardone", "title": "OSA Camera Traps", "publisher": "Open Science Alliance", "publication_year": 2024, "resource_type": "images", "size": "18 GB", "format": "jpeg", "version": "1.0", "rights": "research-only", "description": "OSA partner camera-trap imagery for fine-tuning.", "geo_location": "US", "category": "wildlife", "is_private": True},
+    {"creator": "wqiu", "title": "ENA Wildlife Survey", "publisher": "ICICLE", "publication_year": 2024, "resource_type": "images", "size": "32 GB", "format": "jpeg", "version": "1.0", "rights": "research-only", "description": "Endangered North American species camera-trap survey.", "geo_location": "US", "category": "wildlife", "is_private": True},
+    {"creator": "skhuvis", "title": "Soft Toy Inventory Frames", "publisher": "Internal", "publication_year": 2025, "resource_type": "images", "size": "2 GB", "format": "jpeg", "version": "1.0", "rights": "internal", "description": "Camera frames labelled with soft-toy bounding boxes.", "geo_location": "US", "category": "detection", "is_private": True},
+    {"creator": "skhuvis", "title": "YOLO26 Edge Benchmark", "publisher": "Ultralytics", "publication_year": 2025, "resource_type": "images", "size": "8 GB", "format": "jpeg", "version": "1.0", "rights": "internal", "description": "Edge device evaluation images for YOLO26n benchmarking.", "geo_location": "global", "category": "detection", "is_private": True},
+    {"creator": "skhuvis", "title": "YOLO26x High-Res Evaluation", "publisher": "Ultralytics", "publication_year": 2025, "resource_type": "images", "size": "45 GB", "format": "png", "version": "1.0", "rights": "internal", "description": "High-resolution evaluation set for YOLO26x accuracy testing.", "geo_location": "global", "category": "detection", "is_private": True},
 ]
 
 NUM_USERS = 6
@@ -337,9 +336,8 @@ async def seed():
                     status,
                     created_at,
                     updated_at,
-                    model_card_id,
                     publisher_id
-                ) VALUES ($1,$2,$3,$4,$5,$6,$7,'pending',$8,$9,$10,$11)
+                ) VALUES ($1,$2,$3,$4,$5,$6,$7,'pending',$8,$9,$10)
                 RETURNING identifier
                 """,
                 ds["publication_year"],
@@ -351,7 +349,6 @@ async def seed():
                 ds["is_private"],
                 _NOW,
                 _NOW,
-                ds["model_card_id"],
                 publisher_id,
             )
 

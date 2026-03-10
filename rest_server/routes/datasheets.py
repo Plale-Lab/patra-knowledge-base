@@ -99,7 +99,6 @@ async def get_datasheet(
             d.version,
             d.is_private,
             d.updated_at,
-            d.model_card_id,
             d.dataset_schema_id,
             p.name AS publisher_name,
             p.publisher_identifier,
@@ -253,7 +252,6 @@ async def get_datasheet(
         version=row["version"],
         is_private=row["is_private"],
         updated_at=row["updated_at"].isoformat() if row["updated_at"] else None,
-        model_card_id=row["model_card_id"],
         dataset_schema_id=row["dataset_schema_id"],
         creators=[
             DatasheetCreator(

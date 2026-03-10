@@ -19,7 +19,7 @@ async def list_model_cards(
     """List all model cards. JWT bearer shows private; unauthenticated shows only public."""
     where = "" if include_private else " WHERE is_private = false"
     query = f"""
-        SELECT id, name, category, author, version, short_description
+        SELECT id, name, category, author, version, short_description, is_gated
         FROM model_cards
         {where}
         ORDER BY id
@@ -35,6 +35,7 @@ async def list_model_cards(
             author=r["author"],
             version=r["version"],
             short_description=r["short_description"],
+            is_gated=r["is_gated"],
         )
         for r in rows
     ]
@@ -52,7 +53,7 @@ async def get_model_card(
                mc.full_description, mc.keywords, mc.author, mc.citation,
                mc.input_data, mc.input_type, mc.output_data,
                mc.foundational_model, mc.category, mc.documentation,
-               mc.is_private,
+               mc.is_private, mc.is_gated,
                m.id AS model_id, m.name AS model_name, m.version AS model_version,
                m.description AS model_description, m.owner, m.location,
                m.license, m.framework, m.model_type, m.test_accuracy
@@ -94,5 +95,6 @@ async def get_model_card(
         categories=row["category"],
         citation=row["citation"],
         foundational_model=row["foundational_model"],
+        is_gated=row["is_gated"],
         ai_model=ai_model,
     )

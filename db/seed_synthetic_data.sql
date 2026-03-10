@@ -224,68 +224,58 @@ INSERT INTO models (
 INSERT INTO datasheets (
   identifier, creator, title, publisher, publication_year,
   resource_type, size, format, version, rights, description,
-  geo_location, category, is_private, model_card_id
+  geo_location, category, is_private
 ) OVERRIDING SYSTEM VALUE VALUES
   -- PUBLIC (5)
   (1, 'wqiu', 'LILA Camera Traps', 'LILA BC',
    2021, 'images', '3 TB', 'jpeg', '1.0', 'public',
    'Labelled camera-trap images from LILA BC.',
-   'global', 'wildlife', false,
-   '41d3ed40-b836-4a62-b3fb-67cee79f33d9'),
+   'global', 'wildlife', false),
 
   (2, 'jstubbs', 'ImageNet-1K', 'Stanford / Princeton',
    2012, 'images', '150 GB', 'jpeg', '1.0', 'academic',
    '1000-class subset of the ImageNet dataset.',
-   'global', 'classification', false,
-   'ec3f6227-14c5-4873-96d7-14ddcaf9b34a'),
+   'global', 'classification', false),
 
   (3, 'nkarthikeyan', 'MNIST', 'NYU',
    1998, 'images', '50 MB', 'idx', '1.0', 'public',
    'Handwritten digit images 0-9.',
-   'global', 'classification', false,
-   '43d851cd-a509-49e3-8416-50b344b174ed'),
+   'global', 'classification', false),
 
   (4, 'skhuvis', 'MS COCO 2017', 'cocodataset.org',
    2017, 'images', '25 GB', 'jpeg', '2017', 'CC BY 4.0',
    'Common Objects in Context detection/segmentation dataset.',
-   'global', 'detection', false,
-   '0cddbc64-75f7-4aee-a91d-c27583415bbc'),
+   'global', 'detection', false),
 
   (5, 'cgarcia', 'ImageNet ResNet Subset', 'Stanford / Princeton',
    2015, 'images', '12 GB', 'jpeg', '1.0', 'academic',
    'Curated ImageNet subset for ResNet50 benchmarking.',
-   'global', 'classification', false,
-   '0556d19e-b478-4a89-bd74-a2d822e97a8a'),
+   'global', 'classification', false),
 
   -- PRIVATE (5)
   (6, 'rcardone', 'OSA Camera Traps', 'Open Science Alliance',
    2024, 'images', '18 GB', 'jpeg', '1.0', 'research-only',
    'OSA partner camera-trap imagery for fine-tuning.',
-   'US', 'wildlife', true,
-   '5356e5ba-b700-449a-ace3-ddecbce7a30a'),
+   'US', 'wildlife', true),
 
   (7, 'wqiu', 'ENA Wildlife Survey', 'ICICLE',
    2024, 'images', '32 GB', 'jpeg', '1.0', 'research-only',
    'Endangered North American species camera-trap survey.',
-   'US', 'wildlife', true,
-   '2983330b-28a4-4fb5-816d-aee0e421cb72'),
+   'US', 'wildlife', true),
 
   (8, 'skhuvis', 'Soft Toy Inventory Frames', 'Internal',
    2025, 'images', '2 GB', 'jpeg', '1.0', 'internal',
    'Camera frames labelled with soft-toy bounding boxes.',
-   'US', 'detection', true,
-   'de221f7c-5c78-4375-b9f0-617884b75aa5'),
+   'US', 'detection', true),
 
   (9, 'skhuvis', 'YOLO26 Edge Benchmark', 'Ultralytics',
    2025, 'images', '8 GB', 'jpeg', '1.0', 'internal',
    'Edge device evaluation images for YOLO26n benchmarking.',
-   'global', 'detection', true,
-   '687437a9-aa0a-4255-a350-2cd6b822affd'),
+   'global', 'detection', true),
 
   (10, 'skhuvis', 'YOLO26x High-Res Evaluation', 'Ultralytics',
    2025, 'images', '45 GB', 'png', '1.0', 'internal',
    'High-resolution evaluation set for YOLO26x accuracy testing.',
-   'global', 'detection', true,
-   '4e7f645d-9c64-4fc6-b67d-04eb0a4ce44a');
+   'global', 'detection', true);
 
 COMMIT;

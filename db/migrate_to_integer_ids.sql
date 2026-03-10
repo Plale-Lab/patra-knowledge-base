@@ -57,6 +57,7 @@ CREATE TABLE model_cards (
   name text NOT NULL,
   version text,
   is_private boolean NOT NULL DEFAULT false,
+  is_gated boolean NOT NULL DEFAULT false,
   status approval_status NOT NULL DEFAULT 'pending',
   short_description text,
   full_description text,
@@ -94,11 +95,9 @@ CREATE TABLE datasheets (
   status approval_status NOT NULL DEFAULT 'pending',
   created_at timestamptz NOT NULL,
   updated_at timestamptz NOT NULL,
-  model_card_id bigint REFERENCES model_cards(id),
   dataset_schema_id bigint REFERENCES dataset_schemas(id),
   publisher_id bigint REFERENCES publishers(id)
 );
-CREATE INDEX ON datasheets (model_card_id);
 CREATE INDEX ON datasheets (dataset_schema_id);
 CREATE INDEX ON datasheets (status);
 CREATE INDEX ON datasheets (publisher_id);

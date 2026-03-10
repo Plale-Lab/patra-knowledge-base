@@ -41,6 +41,7 @@ Table model_cards {
   name text [not null]
   version text
   is_private boolean [not null, default: false]
+  is_gated boolean [not null, default: false]
   status approval_status [not null, default: 'pending']
   short_description text
   full_description text
@@ -70,12 +71,10 @@ Table datasheets {
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
 
-  model_card_id bigint [ref: > model_cards.id]
   dataset_schema_id bigint [ref: > dataset_schemas.id]
   publisher_id bigint [ref: > publishers.id]
 
   indexes {
-    (model_card_id)
     (dataset_schema_id)
     (status)
     (publisher_id)
