@@ -1,3 +1,10 @@
+"""Suspended legacy MCP + Neo4j server.
+
+This module is retained for archive/reference compatibility only.
+New development and deployments must use the PostgreSQL-backed FastAPI service
+under rest_server/.
+"""
+
 from mcp.server.fastmcp import FastMCP
 import os
 import json
@@ -20,6 +27,9 @@ mc_ingester = MCIngester(NEO4J_URI, NEO4J_USERNAME, NEO4J_PWD, ENABLE_MC_SIMILAR
 mc_reconstructor = MCReconstructor(NEO4J_URI, NEO4J_USERNAME, NEO4J_PWD)
 
 logging.basicConfig(level=logging.INFO)
+logging.warning(
+    "Suspended legacy MCP server initialized. Use rest_server/ with PostgreSQL for all new backend work."
+)
 
 # Create MCP server
 mcp = FastMCP(

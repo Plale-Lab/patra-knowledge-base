@@ -386,30 +386,33 @@ async def test_create_edge_success():
     with patch('neo4j.AsyncGraphDatabase') as mock_driver_class:
         mock_driver = AsyncMock()
         mock_driver_class.driver.return_value = mock_driver
-        
+
         mock_session = AsyncMock()
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
-        
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+        mock_driver.session = MagicMock(return_value=mock_session_cm)
+
         # Mock the label query result
-        mock_record = MagicMock()
-        mock_record["source_labels"] = ["ModelCard"]
-        mock_record["target_labels"] = ["Model"]
+        mock_record = {
+            "source_labels": ["ModelCard"],
+            "target_labels": ["Model"],
+        }
         mock_result = AsyncMock()
         mock_result.single.return_value = mock_record
         mock_session.run.return_value = mock_result
-        
+
         # Mock the create query result
         mock_created_record = MagicMock()
         mock_created_result = AsyncMock()
         mock_created_result.single.return_value = mock_created_record
         mock_session.run.side_effect = [mock_result, mock_created_result]
-        
+
         result = await create_edge("source-id", "target-id")
-        
+
         assert result["success"] is True
         assert "relationship_type" in result
-        await mock_driver.close.assert_called_once()
+        mock_driver.close.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -418,17 +421,19 @@ async def test_create_edge_nodes_not_found():
     with patch('neo4j.AsyncGraphDatabase') as mock_driver_class:
         mock_driver = AsyncMock()
         mock_driver_class.driver.return_value = mock_driver
-        
+
         mock_session = AsyncMock()
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
-        
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+        mock_driver.session = MagicMock(return_value=mock_session_cm)
+
         mock_result = AsyncMock()
         mock_result.single.return_value = None
         mock_session.run.return_value = mock_result
-        
+
         result = await create_edge("nonexistent-source", "nonexistent-target")
-        
+
         assert result["success"] is False
         assert "not found" in result["error"]
 
@@ -439,20 +444,23 @@ async def test_create_edge_invalid_relationship():
     with patch('neo4j.AsyncGraphDatabase') as mock_driver_class:
         mock_driver = AsyncMock()
         mock_driver_class.driver.return_value = mock_driver
-        
+
         mock_session = AsyncMock()
-        mock_driver.session.return_value.__aenter__.return_value = mock_session
-        mock_driver.session.return_value.__aexit__.return_value = None
-        
-        mock_record = MagicMock()
-        mock_record["source_labels"] = ["ModelCard"]
-        mock_record["target_labels"] = ["InvalidLabel"]
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+        mock_session_cm.__aexit__.return_value = None
+        mock_driver.session = MagicMock(return_value=mock_session_cm)
+
+        mock_record = {
+            "source_labels": ["ModelCard"],
+            "target_labels": ["InvalidLabel"],
+        }
         mock_result = AsyncMock()
         mock_result.single.return_value = mock_record
         mock_session.run.return_value = mock_result
-        
+
         result = await create_edge("source-id", "target-id")
-        
+
         assert result["success"] is False
         assert "No valid relationship" in result["error"]
 

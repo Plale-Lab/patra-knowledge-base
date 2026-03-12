@@ -1,3 +1,9 @@
+"""Suspended Neo4j reconstructor retained for archival reference only.
+
+This code path is no longer part of the active backend. PostgreSQL under
+rest_server/ is the supported runtime and integration surface.
+"""
+
 from ingester.database import GraphDB
 from typing import Dict, Optional, Any, List
 import logging

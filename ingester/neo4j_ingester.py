@@ -1,3 +1,9 @@
+"""Suspended Neo4j ingester retained for archival reference only.
+
+This code path is no longer part of the active backend. PostgreSQL under
+rest_server/ is the supported runtime and integration surface.
+"""
+
 import uuid
 
 from ingester.database import GraphDB

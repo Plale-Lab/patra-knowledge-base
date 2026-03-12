@@ -33,6 +33,25 @@ class AIModel(BaseModel):
     test_accuracy: Optional[float] = None
 
 
+class ModelDownloadURL(BaseModel):
+    model_id: int
+    name: str
+    version: Optional[str] = None
+    download_url: Optional[str] = None
+
+
+class ModelDeployment(BaseModel):
+    experiment_id: int
+    device_id: int
+    timestamp: Optional[str] = None
+    status: str
+    precision: Optional[float] = None
+    recall: Optional[float] = None
+    f1_score: Optional[float] = None
+    map_50: Optional[float] = None
+    map_50_95: Optional[float] = None
+
+
 class ModelCardDetail(BaseModel):
     """Detail endpoint: matches reconstruct() format. external_id is integer per schema."""
 

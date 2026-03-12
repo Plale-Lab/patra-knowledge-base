@@ -1,3 +1,6 @@
+# SUSPENDED LEGACY STACK: This compose file exists only as archival/reference
+# material for the retired Neo4j backend. New deployment and integration work
+# must use the PostgreSQL-backed FastAPI service under rest_server/.
 services:
   patra-db:
     image: neo4j:5.21.0-community

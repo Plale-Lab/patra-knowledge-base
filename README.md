@@ -13,6 +13,19 @@ The Patra Knowledge Base is a system designed to manage and track AI/ML models, 
 
 **Tag**: CI4AI, PADI
 
+## Status Notice
+
+Patra's active backend is now the **FastAPI + PostgreSQL** service under `rest_server/`.
+
+The following Neo4j-based components are **retained only for archive/reference compatibility and are no longer part of the active backend path**:
+- `legacy_server/`
+- `mcp_server/`
+- `ingester/neo4j_ingester.py`
+- `reconstructor/mc_reconstructor.py`
+- Neo4j-oriented Docker/Make targets
+
+For all new development, deployment, integration, and operational work, use the PostgreSQL-backed REST API only.
+
 ## Explanation
 
 At the heart of the Patra Knowledge Base is the concept of Model Cards. These cards are essentially detailed records that provide essential information about each AI/ML model. This information includes technical details like the model's accuracy and latency, but it goes beyond that to include non-technical aspects such as fairness, explainability, and the model's behavior in various deployment environments. This holistic approach is intended to create a comprehensive understanding of the model's strengths and weaknesses, enabling more informed decisions about its use and deployment
@@ -21,7 +34,7 @@ Key features and capabilities of the Patra ModelCards Framework include:
 
 - **Semi-automated information capture:** Patra reduces the burden of manual documentation by automatically capturing information about model fairness, explainability, and performance in different deployment environments. This automation is facilitated by the [Model Card Toolkit](https://github.com/Data-to-Insight-Center/patra-toolkit)  , which invokes analysis tools and integrates the results directly into the Model Cards.
   
-- **Graph-based knowledge representation:** Patra uses a graph database (Neo4j) to represent Model Cards and their relationships. This graph-based approach allows for efficient querying and inference, making it possible to track model evolution, identify similar models, and answer complex questions about model deployment and performance.
+- **Relational system of record:** Patra's active backend now uses PostgreSQL as the system of record for model cards, datasheets, and protected asset ingestion APIs. Neo4j-era graph components are preserved only as legacy reference code and are no longer the supported runtime path.
   
 - **Provenance tracking:** Patra leverages the concepts of **forward and backward provenance** to comprehensively track the relationships between models, datasets, and deployment instances. This makes it possible to understand the lineage of models, trace their origins, and analyze their usage patterns.
   
@@ -54,9 +67,9 @@ The primary REST API is implemented with FastAPI and backed by PostgreSQL. It is
 
 The FastAPI app is exposed via the `rest_server` package (see `rest_server/main.py`) and is built into the Docker image `plalelab/patra-backend:latest` using `rest_server/Dockerfile` (see `scripts/build-push-backend.sh`).
 
-#### 2. Legacy REST Server (Flask + Neo4j)
+#### 2. Legacy REST Server (Flask + Neo4j, Suspended)
 
-The legacy REST server is built using Flask and exposes a RESTful API for interaction with the Patra Knowledge Graph (KG) stored in Neo4j. It is still available for backwards compatibility and for graph-based operations, but new clients should prefer the FastAPI + PostgreSQL API where possible.
+The legacy REST server is built using Flask and exposes a RESTful API for interaction with the Patra Knowledge Graph (KG) stored in Neo4j. It is retained in-repo for archive/reference purposes only and is not part of the active backend going forward.
 
 - **Code location**: `legacy_server/`
 - **Default port**: `5002`
@@ -84,8 +97,8 @@ Key endpoints include:
 
 For more information on the legacy REST endpoints, please refer to the [API documentation.](docs/patra_openapi.json)
 
-#### 3. MCP (Model Context Protocol) Server
-The MCP server provides a complete interface for AI-native interactions with the Patra Knowledge Graph.
+#### 3. MCP (Model Context Protocol) Server, Suspended
+The in-repo MCP server is Neo4j-backed legacy code retained for reference. It is not part of the active PostgreSQL backend path.
 
 | Endpoint                                    | Type     | Description                                                                                                  |
 |-------------------------------------------------|----------|--------------------------------------------------------------------------------------------------------------|
@@ -116,14 +129,13 @@ The MCP server runs on port `8050` and uses Server-Sent Events (SSE) transport f
 #### System Requirements
 - [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose) installed and running.
 - Open network access to the following ports:
-  - `7474` (Neo4j Web UI)
-  - `7687` (Neo4j Bolt)
   - `8000` (Primary REST API)
-  - `5002` (Legacy REST Server)
-  - `8050` (MCP Server)
+  - `5002` (legacy Flask server, suspended)
+  - `8050` (legacy MCP server, suspended)
 
 #### Dependencies
-- **Neo4j**: Version **5.21.0-community** is deployed via Docker (manual installation is not required).
+- **PostgreSQL**: Required for the active FastAPI backend.
+- **Neo4j**: Legacy-only dependency retained for archived code paths; not required for new backend work.
 - [Optional] **OpenAI API Key**: If the system needs to support Model Card similarities, you need to obtain a valid Open AI API key. Refer to the [OpenAI documentation](https://platform.openai.com) for instructions. This is disabled by default.
 
 
@@ -155,31 +167,30 @@ Requires `repo` scope enabled on the GitHub token.
 ### 2. Clone the repository and start services
 ```bash
 git clone https://github.com/Data-to-Insight-Center/patra-kg.git
-make up
+cd patra-kg
+docker compose -f docker-compose.backend.yml up --build
 ```
   
-The services will be running at:
-- **REST Server**: `http://localhost:5002` - View Swagger documentation at `http://localhost:5002/swagger`
-- **MCP Server**: `http://localhost:8050` - SSE endpoint for AI agent integration
-- **Neo4j Browser**: `http://localhost:7474/browser/` - View and query the knowledge graph
-
-Open [neo4j browser](http://localhost:7474/browser/) and log in with the credentials mentioned in the docker-compose file to view the model card data.   
+The supported service stack is the PostgreSQL-backed FastAPI app under `rest_server/`, started with `docker-compose.backend.yml`.
+Legacy Neo4j compose assets remain in the repository for archival reference only and should not be treated as the supported deployment path.
 
 - To shut down services, use:
     ```bash
-    make down
+    docker compose -f docker-compose.backend.yml down
     ```
 
 ### 3. Using the MCP Server (Optional)
 
-The MCP server enables AI assistants to interact with the Patra Knowledge Graph using the Model Context Protocol. The production MCP server provides:
+This section describes the suspended in-repo Neo4j-based MCP server for archival/reference purposes only. It is not part of the active PostgreSQL backend and should not be used for new integrations.
+
+The legacy MCP server provides:
 - **4 Resources** for reading model card data by identifier
 - **10 Tools** for operations, queries, and state modifications
 
 **For Claude Desktop:**
 1. Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
 
-For the production MCP Server:
+For the legacy archived MCP server:
 ```json
 {
   "mcpServers": {
@@ -192,9 +203,9 @@ For the production MCP Server:
 
 **For Custom AI Agents:**
 Connect to the MCP server endpoint:
-- MCP Server: `http://localhost:8050/sse` (4 resources, 10 tools)
+- MCP Server: `http://localhost:8050/sse` (legacy archived endpoint)
 
-**Example Usage:**
+**Historical Example Usage:**
 
 *With MCP Server:*
 ```

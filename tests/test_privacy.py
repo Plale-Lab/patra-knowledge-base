@@ -5,6 +5,7 @@ Scenario 2 – Valid X-Tapis-Token: client sees all 10 model cards / datasheets.
 IDs are integers (1–10) per db/schema.dbml.
 """
 
+from rest_server.errors import ASSET_NOT_AVAILABLE_DETAIL
 from tests.conftest import (
     ALL_MC_IDS,
     PRIVATE_DS_IDENTIFIERS,
@@ -39,15 +40,37 @@ class TestWithoutToken:
     def test_private_modelcard_detail_returns_404(self, client):
         resp = client.get(f"/modelcard/{PRIVATE_MC_IDS[0]}")
         assert resp.status_code == 404
+        assert resp.json()["detail"] == ASSET_NOT_AVAILABLE_DETAIL
 
     def test_public_modelcard_detail_returns_200(self, client):
         resp = client.get(f"/modelcard/{PUBLIC_MC_IDS[0]}")
         assert resp.status_code == 200
         assert resp.json()["external_id"] == PUBLIC_MC_IDS[0]
 
+    def test_private_modelcard_download_url_returns_404(self, client):
+        resp = client.get(f"/modelcard/{PRIVATE_MC_IDS[0]}/download_url")
+        assert resp.status_code == 404
+        assert resp.json()["detail"] == ASSET_NOT_AVAILABLE_DETAIL
+
+    def test_public_modelcard_download_url_returns_200(self, client):
+        resp = client.get(f"/modelcard/{PUBLIC_MC_IDS[0]}/download_url")
+        assert resp.status_code == 200
+        assert resp.json()["download_url"] == f"https://example.com/models/{PUBLIC_MC_IDS[0]}"
+
+    def test_private_modelcard_deployments_returns_404(self, client):
+        resp = client.get(f"/modelcard/{PRIVATE_MC_IDS[0]}/deployments")
+        assert resp.status_code == 404
+        assert resp.json()["detail"] == ASSET_NOT_AVAILABLE_DETAIL
+
+    def test_public_modelcard_deployments_returns_200(self, client):
+        resp = client.get(f"/modelcard/{PUBLIC_MC_IDS[0]}/deployments")
+        assert resp.status_code == 200
+        assert resp.json()[0]["experiment_id"] == PUBLIC_MC_IDS[0] * 100 + 1
+
     def test_private_datasheet_detail_returns_404(self, client):
         resp = client.get(f"/datasheet/{PRIVATE_DS_IDENTIFIERS[0]}")
         assert resp.status_code == 404
+        assert resp.json()["detail"] == ASSET_NOT_AVAILABLE_DETAIL
 
     def test_public_datasheet_detail_returns_200(self, client):
         resp = client.get(f"/datasheet/{PUBLIC_DS_IDENTIFIERS[0]}")
@@ -85,6 +108,22 @@ class TestWithTapisToken:
         assert resp.status_code == 200
         assert resp.json()["external_id"] == PRIVATE_MC_IDS[0]
 
+    def test_private_modelcard_download_url_returns_200(self, client, tapis_headers):
+        resp = client.get(
+            f"/modelcard/{PRIVATE_MC_IDS[0]}/download_url",
+            headers=tapis_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["download_url"] == f"https://example.com/models/{PRIVATE_MC_IDS[0]}"
+
+    def test_private_modelcard_deployments_returns_200(self, client, tapis_headers):
+        resp = client.get(
+            f"/modelcard/{PRIVATE_MC_IDS[0]}/deployments",
+            headers=tapis_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()[0]["experiment_id"] == PRIVATE_MC_IDS[0] * 100 + 1
+
     def test_private_datasheet_detail_returns_200(self, client, tapis_headers):
         resp = client.get(
             f"/datasheet/{PRIVATE_DS_IDENTIFIERS[0]}",
@@ -108,8 +147,29 @@ class TestEdgeCases:
     def test_nonexistent_modelcard_returns_404(self, client, tapis_headers):
         resp = client.get("/modelcard/99999", headers=tapis_headers)
         assert resp.status_code == 404
+        assert resp.json()["detail"] == ASSET_NOT_AVAILABLE_DETAIL
+
+    def test_nonexistent_modelcard_download_url_returns_404(self, client, tapis_headers):
+        resp = client.get("/modelcard/99999/download_url", headers=tapis_headers)
+        assert resp.status_code == 404
+        assert resp.json()["detail"] == ASSET_NOT_AVAILABLE_DETAIL
+
+    def test_nonexistent_modelcard_deployments_returns_404(self, client, tapis_headers):
+        resp = client.get("/modelcard/99999/deployments", headers=tapis_headers)
+        assert resp.status_code == 404
+        assert resp.json()["detail"] == ASSET_NOT_AVAILABLE_DETAIL
 
     def test_invalid_modelcard_id_returns_422(self, client, tapis_headers):
         """Non-integer path (e.g. 'not-an-id') yields 422 Unprocessable Entity."""
         resp = client.get("/modelcard/not-an-id", headers=tapis_headers)
         assert resp.status_code == 422
+
+    def test_healthz_returns_200(self, client):
+        resp = client.get("/healthz")
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "ok"}
+
+    def test_readyz_returns_200(self, client):
+        resp = client.get("/readyz")
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "ok"}

@@ -1,0 +1,46 @@
+# Supported local/dev stack for the active Patra backend.
+# This file replaces the suspended Neo4j-oriented docker-compose.yml for new work.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: patra-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-patra}
+      POSTGRES_USER: ${POSTGRES_USER:-patra}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-patra-dev-password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - patra_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-patra} -d ${POSTGRES_DB:-patra}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  patra-backend:
+    build:
+      context: .
+      dockerfile: rest_server/Dockerfile
+    container_name: patra-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 8000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-patra}:${POSTGRES_PASSWORD:-patra-dev-password}@postgres:5432/${POSTGRES_DB:-patra}
+      PATRA_ASSET_INGEST_KEYS_JSON: '{"org-a":"change-me"}'
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+volumes:
+  patra_postgres_data:

@@ -1,3 +1,10 @@
+"""Suspended legacy Flask + Neo4j server.
+
+This module is retained for archive/reference compatibility only.
+New development and deployments must use the PostgreSQL-backed FastAPI service
+under rest_server/.
+"""
+
 import os
 import logging
 from urllib.parse import urlparse
@@ -18,6 +25,9 @@ mc_ingester = MCIngester(NEO4J_URI, NEO4J_USERNAME, NEO4J_PWD, ENABLE_MC_SIMILAR
 mc_reconstructor = MCReconstructor(NEO4J_URI, NEO4J_USERNAME, NEO4J_PWD)
 
 logging.basicConfig(level=logging.INFO)
+logging.warning(
+    "Suspended legacy server initialized. Use rest_server/ with PostgreSQL for all new backend work."
+)
 app = Flask(__name__)
 api = Api(app, version='1.0', title='Patra API',
           description='API to interact with Patra Knowledge Graph',

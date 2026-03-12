@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
 import asyncpg
 
 from rest_server.database import get_pool
 from rest_server.deps import get_include_private
+from rest_server.errors import asset_not_available_or_visible
 from rest_server.models import (
     DatasheetAlternateIdentifier,
     DatasheetContributor,
@@ -112,9 +113,9 @@ async def get_datasheet(
     async with pool.acquire() as conn:
         row = await conn.fetchrow(core_query, identifier)
     if not row:
-        raise HTTPException(status_code=404, detail="Datasheet not found")
+        raise asset_not_available_or_visible()
     if row["is_private"] and not include_private:
-        raise HTTPException(status_code=404, detail="Datasheet not found")
+        raise asset_not_available_or_visible()
 
     async with pool.acquire() as conn:
         creators_rows = await conn.fetch(

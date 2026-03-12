@@ -1,4 +1,7 @@
 .PHONY: up down
+# SUSPENDED LEGACY TARGETS: This Makefile operates the archived Neo4j stack.
+# Do not use it for new deployment work; the supported backend is rest_server/
+# with PostgreSQL.
 # Detect Docker Compose command
 DOCKER_COMPOSE = $(shell if command -v docker-compose > /dev/null 2>&1; then echo "docker-compose"; else echo "docker compose"; fi)
 

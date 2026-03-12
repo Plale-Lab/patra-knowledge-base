@@ -7,6 +7,7 @@ IDs are integers (1–10) matching db/schema.dbml.
 """
 
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
@@ -60,6 +61,17 @@ def _mc_detail_row(mc_id: int, private: bool) -> dict:
     return base
 
 
+def _mc_download_row(mc_id: int, private: bool) -> dict:
+    detail = _mc_detail_row(mc_id, private)
+    return {
+        "is_private": private,
+        "model_id": detail["model_id"],
+        "model_name": detail["model_name"],
+        "model_version": detail["model_version"],
+        "download_url": f"https://example.com/models/{mc_id}",
+    }
+
+
 ALL_MC_ROWS = sorted(
     [_mc_row(i, False) for i in PUBLIC_MC_IDS]
     + [_mc_row(i, True) for i in PRIVATE_MC_IDS],
@@ -97,6 +109,24 @@ ALL_DS_ROWS = (
     + [_ds_row(i, True) for i in PRIVATE_DS_IDENTIFIERS]
 )
 PUBLIC_DS_ROWS = [_ds_row(i, False) for i in PUBLIC_DS_IDENTIFIERS]
+
+
+def _deployment_rows(model_id: int) -> list[dict]:
+    if model_id not in ALL_MC_IDS:
+        return []
+    return [
+        {
+            "experiment_id": model_id * 100 + 1,
+            "device_id": 501,
+            "timestamp": datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc),
+            "status": "completed",
+            "precision": Decimal("0.91"),
+            "recall": Decimal("0.88"),
+            "f1_score": Decimal("0.895"),
+            "map_50": Decimal("0.93"),
+            "map_50_95": Decimal("0.76"),
+        }
+    ]
 
 
 def _ds_detail_row(ident: int, private: bool) -> dict:
@@ -198,6 +228,12 @@ def _make_mock_pool():
             limit = args[0] if args else 50
             offset = args[1] if len(args) > 1 else 0
             return rows[offset : offset + limit]
+        if "FROM experiments e" in query and args:
+            model_id = args[0]
+            limit = args[1] if len(args) > 1 else 50
+            offset = args[2] if len(args) > 2 else 0
+            rows = _deployment_rows(model_id)
+            return rows[offset : offset + limit]
         if "FROM datasheets d" in query:
             base_rows = PUBLIC_DS_ROWS if "d.is_private = false" in query else ALL_DS_ROWS
             limit = args[0] if args else 50
@@ -259,6 +295,19 @@ def _make_mock_pool():
         return []
 
     async def _fetchrow(query: str, *args):
+        if "m.location AS download_url" in query and args:
+            mc_id = args[0]
+            if mc_id in ALL_MC_IDS:
+                return _mc_download_row(mc_id, mc_id in PRIVATE_MC_IDS)
+            return None
+        if "mc.is_private" in query and "m.id AS model_id" in query and "m.location AS download_url" not in query and "m.name AS model_name" not in query and args:
+            mc_id = args[0]
+            if mc_id in ALL_MC_IDS:
+                return {
+                    "is_private": mc_id in PRIVATE_MC_IDS,
+                    "model_id": mc_id,
+                }
+            return None
         if "model_cards" in query and args:
             raw = args[0]
             mc_id = int(raw) if isinstance(raw, str) and raw.isdigit() else raw
@@ -273,8 +322,14 @@ def _make_mock_pool():
             return None
         return None
 
+    async def _fetchval(query: str, *args):
+        if query.strip() == "SELECT 1":
+            return 1
+        return None
+
     conn.fetch = _fetch
     conn.fetchrow = _fetchrow
+    conn.fetchval = _fetchval
 
     @asynccontextmanager
     async def _acquire():
