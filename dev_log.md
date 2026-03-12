@@ -1,5 +1,43 @@
 # Dev Log
 
+## Version 0.1.2 - 2026-03-12
+
+### Context
+
+After publishing the PostgreSQL-backed backend image, the runtime still failed in Pods during application startup. The process did not fail in request handling code; it failed while initializing the async PostgreSQL pool.
+
+### Problem
+
+- The backend exited during FastAPI startup while connecting to PostgreSQL on the Tapis Pods host.
+- The failure surfaced as `ConnectionResetError` inside `uvloop.start_tls`, after repeated retries.
+- This indicated the process was reaching the remote endpoint, but the TLS negotiation mode used by `asyncpg` did not match what the Pods-facing PostgreSQL endpoint expected.
+
+### Engineering Approach
+
+- Treat the failure as a transport mismatch rather than a schema or credential issue.
+- Preserve the existing PostgreSQL DSN flow, but make the connection builder aware of the Tapis Pods 443 endpoint behavior.
+- Add regression tests around connection option construction so the runtime does not silently fall back to the wrong handshake path later.
+
+### Implementation
+
+- Replaced the old DSN helper with `_build_connection_options()` in `rest_server/database.py`.
+- For hosts ending with `.pods.icicleai.tapis.io` on port `443`, the backend now sets `direct_tls=True` when creating the asyncpg pool.
+- Existing `sslmode=require` handling remains in place, but the connection is now established with direct TLS instead of PostgreSQL SSLRequest upgrade semantics for that Pods endpoint.
+- Added `tests/test_database_config.py` to verify:
+  - Tapis Pods DSNs are rewritten to port `443`
+  - Tapis Pods connections enable `direct_tls=True`
+  - non-Pods PostgreSQL hosts continue to use regular TLS behavior
+
+### Diagnosis Summary
+
+The startup failure was caused by using the wrong TLS negotiation mode for the Pods-facing PostgreSQL endpoint. The endpoint was reachable, but it reset the connection during `start_tls`, which is consistent with an endpoint expecting direct TLS instead of a later protocol upgrade.
+
+### Validation
+
+- `pytest tests/test_database_config.py -q` -> `3 passed`
+- `pytest tests/test_privacy.py -q` -> `23 passed`
+- `pytest tests/test_asset_ingest_api.py -q` -> `6 passed`
+
 ## Version 0.1.1 - 2026-03-12
 
 ### Context
