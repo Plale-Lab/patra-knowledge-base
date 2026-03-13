@@ -19,6 +19,12 @@ from rest_server.workflow_models import (
 router = APIRouter(tags=["submissions"])
 
 
+def _decode_json_column(value):
+    if isinstance(value, str):
+        return json.loads(value)
+    return value or {}
+
+
 def _row_to_submission(row: asyncpg.Record) -> SubmissionRecord:
     return SubmissionRecord(
         id=str(row["id"]),
@@ -27,7 +33,7 @@ def _row_to_submission(row: asyncpg.Record) -> SubmissionRecord:
         submitted_by=row["submitted_by"],
         submitted_at=row["submitted_at"],
         title=row["title"],
-        data=row["data"] or {},
+        data=_decode_json_column(row["data"]),
         admin_notes=row["admin_notes"],
         reviewed_by=row["reviewed_by"],
         reviewed_at=row["reviewed_at"],
@@ -210,10 +216,10 @@ async def review_submission(
 
             if payload.status == "approved" and row["status"] != "approved":
                 if row["submission_type"] == "model_card":
-                    asset = AssetModelCardCreate.model_validate(row["asset_payload"])
+                    asset = AssetModelCardCreate.model_validate(_decode_json_column(row["asset_payload"]))
                     ingest_result = await _create_model_card_in_tx(conn, asset, "tapis-review")
                 else:
-                    asset = AssetDatasheetCreate.model_validate(row["asset_payload"])
+                    asset = AssetDatasheetCreate.model_validate(_decode_json_column(row["asset_payload"]))
                     ingest_result = await _create_datasheet_in_tx(conn, asset, "tapis-review")
 
                 created_asset_id = ingest_result.asset_id

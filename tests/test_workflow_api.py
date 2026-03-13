@@ -1,3 +1,4 @@
+import json
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -66,8 +67,8 @@ class MockWorkflowConn:
                 "submitted_by": args[1],
                 "submitted_at": now,
                 "title": args[2],
-                "data": self._decode_json_arg(args[3]),
-                "asset_payload": self._decode_json_arg(args[4]),
+                "data": args[3],
+                "asset_payload": args[4],
                 "admin_notes": None,
                 "reviewed_by": None,
                 "reviewed_at": None,
@@ -116,14 +117,6 @@ class MockWorkflowConn:
     @asynccontextmanager
     async def transaction(self):
         yield self
-
-    @staticmethod
-    def _decode_json_arg(value):
-        if isinstance(value, str):
-            import json
-
-            return json.loads(value)
-        return value
 
     @staticmethod
     def _find_by_id(items: list[dict], item_id: int):
@@ -328,3 +321,27 @@ def test_ticket_create_and_admin_update(workflow_client):
     assert updated["status"] == "resolved"
     assert updated["reviewed_by"] == "williamq96"
     assert updated["admin_response"] == "Access granted."
+
+
+def test_submission_row_decoder_accepts_json_strings():
+    from rest_server.routes.submissions import _row_to_submission
+
+    row = {
+        "id": 1,
+        "submission_type": "model_card",
+        "status": "pending",
+        "submitted_by": "alice",
+        "submitted_at": datetime.now(timezone.utc),
+        "title": "Queued Model",
+        "data": json.dumps({"asset_url": "https://example.com/model"}),
+        "asset_payload": json.dumps({"name": "Queued Model"}),
+        "admin_notes": None,
+        "reviewed_by": None,
+        "reviewed_at": None,
+        "created_asset_id": None,
+        "created_asset_type": None,
+        "error_message": None,
+    }
+
+    submission = _row_to_submission(row)
+    assert submission.data["asset_url"] == "https://example.com/model"
