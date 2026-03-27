@@ -198,7 +198,9 @@ async def _get_model_card_base_row(conn: asyncpg.Connection, model_card_id: int)
                full_description, keywords, author, citation,
                input_data, input_type, output_data,
                foundational_model, category, documentation,
-               is_private, is_gated
+               is_private, is_gated,
+               asset_version, previous_version_id,
+               COALESCE(root_version_id, id) AS root_version_id
         FROM model_cards
         WHERE id = $1
         """,
@@ -296,20 +298,44 @@ def _build_ai_model(
 async def list_model_cards(
     pool: asyncpg.Pool = Depends(get_pool),
     include_private: bool = Depends(get_include_private),
+    q: str | None = Query(default=None, max_length=255),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
 ):
     """List all model cards. JWT bearer shows private; unauthenticated shows only public."""
-    where = "" if include_private else " WHERE is_private = false"
+    params: list[object] = []
+    filters: list[str] = []
+    if not include_private:
+        filters.append("is_private = false")
+    query_text = q.strip() if q else None
+    if query_text:
+        params.append(f"%{query_text}%")
+        filters.append(
+            f"(name ILIKE ${len(params)} OR COALESCE(author, '') ILIKE ${len(params)} OR COALESCE(short_description, '') ILIKE ${len(params)})"
+        )
+    where = f"WHERE {' AND '.join(filters)}" if filters else ""
+    params.extend([limit, skip])
     query = f"""
-        SELECT id, name, category, author, version, short_description, is_gated
-        FROM model_cards
-        {where}
-        ORDER BY id
-        LIMIT $1 OFFSET $2
+        WITH ranked AS (
+            SELECT
+                id, name, category, author, version, short_description, is_gated,
+                asset_version, previous_version_id, COALESCE(root_version_id, id) AS root_version_id,
+                ROW_NUMBER() OVER (
+                    PARTITION BY COALESCE(root_version_id, id)
+                    ORDER BY asset_version DESC, id DESC
+                ) AS rn
+            FROM model_cards
+            {where}
+        )
+        SELECT id, name, category, author, version, short_description, is_gated,
+               asset_version, previous_version_id, root_version_id
+        FROM ranked
+        WHERE rn = 1
+        ORDER BY LOWER(name), id
+        LIMIT ${len(params) - 1} OFFSET ${len(params)}
     """
     async with pool.acquire() as conn:
-        rows = await conn.fetch(query, limit, skip)
+        rows = await conn.fetch(query, *params)
     return [
         ModelCardSummary(
             mc_id=int(r["id"]),
@@ -319,6 +345,9 @@ async def list_model_cards(
             version=r["version"],
             short_description=r["short_description"],
             is_gated=r["is_gated"],
+            asset_version=int(r["asset_version"] or 1),
+            previous_version_id=int(r["previous_version_id"]) if r["previous_version_id"] is not None else None,
+            root_version_id=int(r["root_version_id"]) if r["root_version_id"] is not None else None,
         )
         for r in rows
     ]
@@ -364,7 +393,11 @@ async def get_model_card(
         categories=model_card_row["category"],
         citation=model_card_row["citation"],
         foundational_model=model_card_row["foundational_model"],
+        is_private=bool(model_card_row["is_private"]),
         is_gated=is_gated,
+        asset_version=int(model_card_row["asset_version"] or 1),
+        previous_version_id=int(model_card_row["previous_version_id"]) if model_card_row["previous_version_id"] is not None else None,
+        root_version_id=int(model_card_row["root_version_id"]) if model_card_row["root_version_id"] is not None else None,
         ai_model=ai_model,
     )
 

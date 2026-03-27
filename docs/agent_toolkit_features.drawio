@@ -1,0 +1,55 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" version="29.6.6">
+  <diagram name="Page-1" id="RBrgMyiEUJKmI_m2uF0i">
+    <mxGraphModel dx="1722" dy="948" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;fontStyle=1;fillColor=#eceff1;strokeColor=#546e7a;" value="PATRA agent toolkit pipeline — methods / figure caption (T.B.D.)" vertex="1">
+          <mxGeometry height="48" width="747" x="40" y="32" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#263238;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" value="&lt;b&gt;1. Document in&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:11px&quot;&gt;Exactly one of: server path, URL, or pasted text → &lt;i&gt;patra_agent_service.extract_schema&lt;/i&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="56" width="400" x="40" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f57f17;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" value="&lt;b&gt;2. Query schema extraction&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:11px&quot;&gt;&lt;i&gt;src/paper_schema_parser&lt;/i&gt; (DOCX / MD / JSON); HTML tables in-service → &lt;i&gt;machine_schema&lt;/i&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="62" width="400" x="40" y="176" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" value="&lt;b&gt;3. Public schema pool&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:11px&quot;&gt;&lt;i&gt;src/patra_schema_pool&lt;/i&gt; · cache &lt;i&gt;.patra-agent-cache/&lt;/i&gt; · &lt;i&gt;GET /agent-tools/schema-pool&lt;/i&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="58" width="400" x="40" y="258" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#263238;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" value="&lt;b&gt;4. Rank &amp;amp; align&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:11px&quot;&gt;&lt;i&gt;src/hybrid_schema_matcher&lt;/i&gt; (+ optional OpenAI-compatible LLM rerank)&lt;br/&gt;&lt;i&gt;POST /agent-tools/paper-schema-search&lt;/i&gt; — embeds per-candidate feasibility summary&lt;/font&gt;" vertex="1">
+          <mxGeometry height="68" width="400" x="40" y="336" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" value="&lt;b&gt;5. Missing-column feasibility&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:11px&quot;&gt;&lt;i&gt;src/missing_column_derivation&lt;/i&gt; — direct / derivable-with-provenance / rejected&lt;br/&gt;&lt;i&gt;POST /agent-tools/missing-column-analysis&lt;/i&gt; (per chosen candidate)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="64" width="400" x="40" y="424" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#ad1457;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" value="&lt;b&gt;6. Bounded synthesis (optional)&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:11px&quot;&gt;&lt;i&gt;patra_synthesis_service&lt;/i&gt;: A plan (opt. LLM) → B deterministic exec → C validation → D materialize&lt;br/&gt;&lt;i&gt;POST /agent-tools/generate-synthesized-dataset&lt;/i&gt;&lt;/font&gt;" vertex="1">
+          <mxGeometry height="72" width="400" x="40" y="508" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ede7f6;strokeColor=#5e35b1;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;" value="&lt;b&gt;7. Artifact persistence &amp;amp; admission&lt;/b&gt;&lt;br/&gt;&lt;font style=&quot;font-size:11px&quot;&gt;PostgreSQL &lt;i&gt;generated_dataset_artifacts&lt;/i&gt; · CSV/schema downloads&lt;br/&gt;&lt;i&gt;POST …/submit-review&lt;/i&gt; → admin &lt;i&gt;submission_queue&lt;/i&gt; (pool admission)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="68" width="400" x="40" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fafafa;strokeColor=#9e9e9e;align=left;spacingLeft=8;spacingTop=6;verticalAlign=top;fontSize=11;" value="&lt;b&gt;Code map (no second pipeline)&lt;/b&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;font-size:10px;line-height:1.35&quot;&gt;&lt;i&gt;rest_server/routes/agent_tools.py&lt;/i&gt;&lt;br/&gt;&lt;i&gt;rest_server/patra_agent_service.py&lt;/i&gt;&lt;br/&gt;&lt;i&gt;rest_server/patra_synthesis_service.py&lt;/i&gt;&lt;br/&gt;&lt;i&gt;src/paper_schema_parser.py&lt;/i&gt;&lt;br/&gt;&lt;i&gt;src/hybrid_schema_matcher.py&lt;/i&gt;&lt;br/&gt;&lt;i&gt;src/missing_column_derivation.py&lt;/i&gt;&lt;br/&gt;&lt;i&gt;src/patra_schema_pool.py&lt;/i&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="568" width="325" x="462" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#37474f;endArrow=block;endFill=1;" target="4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#37474f;endArrow=block;endFill=1;" target="5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#37474f;endArrow=block;endFill=1;" target="6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#37474f;endArrow=block;endFill=1;" target="7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#ad1457;endArrow=block;endFill=1;dashed=1;dashPattern=8 4;fontSize=10;fontColor=#6a1b9a;" target="8" value="optional: derivable fields">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#37474f;endArrow=block;endFill=1;" target="9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

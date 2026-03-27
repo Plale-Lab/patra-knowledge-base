@@ -16,6 +16,9 @@ class ModelCardSummary(BaseModel):
     version: Optional[str] = None
     short_description: Optional[str] = None
     is_gated: bool = False
+    asset_version: int = 1
+    previous_version_id: Optional[int] = None
+    root_version_id: Optional[int] = None
 
 
 class AIModel(BaseModel):
@@ -68,7 +71,11 @@ class ModelCardDetail(BaseModel):
     categories: Optional[str] = None
     citation: Optional[str] = None
     foundational_model: Optional[str] = None
+    is_private: bool = False
     is_gated: bool = False
+    asset_version: int = 1
+    previous_version_id: Optional[int] = None
+    root_version_id: Optional[int] = None
     ai_model: Optional[AIModel] = None
 
 
@@ -192,6 +199,9 @@ class DatasheetSummary(BaseModel):
     title: str
     creator: Optional[str] = None
     category: Optional[str] = None
+    asset_version: int = 1
+    previous_version_id: Optional[int] = None
+    root_version_id: Optional[int] = None
 
 
 class DatasheetDetail(BaseModel):
@@ -207,6 +217,9 @@ class DatasheetDetail(BaseModel):
     is_private: bool = False
     updated_at: Optional[str] = None
     dataset_schema_id: Optional[int] = None
+    asset_version: int = 1
+    previous_version_id: Optional[int] = None
+    root_version_id: Optional[int] = None
 
     # Nested DataCite-style lists / objects
     creators: list[DatasheetCreator] = []

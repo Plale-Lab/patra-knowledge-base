@@ -1,6 +1,7 @@
 import logging
 import json
 from collections.abc import Sequence
+from typing import NamedTuple
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -19,6 +20,12 @@ from rest_server.ingest_models import (
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1/assets", tags=["assets"])
+
+
+class AssetRevisionContext(NamedTuple):
+    asset_version: int
+    previous_version_id: int | None
+    root_version_id: int | None
 
 
 async def _find_duplicate_model_card(conn: asyncpg.Connection, asset: AssetModelCardCreate) -> int | None:
@@ -44,6 +51,7 @@ async def _create_model_card_in_tx(
     conn: asyncpg.Connection,
     asset: AssetModelCardCreate,
     organization: str,
+    revision_context: AssetRevisionContext | None = None,
 ) -> AssetIngestResult:
     duplicate_id = await _find_duplicate_model_card(conn, asset)
     if duplicate_id is not None:
@@ -61,13 +69,13 @@ async def _create_model_card_in_tx(
             name, version, is_private, is_gated, status,
             short_description, full_description, keywords, author, citation,
             input_data, input_type, output_data, foundational_model, category, documentation,
-            created_at, updated_at
+            created_at, updated_at, asset_version, previous_version_id, root_version_id
         )
         VALUES (
             $1, $2, $3, $4, 'approved',
             $5, $6, $7, $8, $9,
             $10, $11, $12, $13, $14, $15,
-            NOW(), NOW()
+            NOW(), NOW(), $16, $17, $18
         )
         RETURNING id
         """,
@@ -86,7 +94,21 @@ async def _create_model_card_in_tx(
         asset.foundational_model,
         asset.category,
         asset.documentation,
+        revision_context.asset_version if revision_context else 1,
+        revision_context.previous_version_id if revision_context else None,
+        revision_context.root_version_id if revision_context else None,
     )
+
+    if revision_context is None:
+        await conn.execute(
+            """
+            UPDATE model_cards
+            SET root_version_id = $2
+            WHERE id = $1
+            """,
+            model_card_id,
+            model_card_id,
+        )
 
     if asset.ai_model is not None:
         await conn.execute(
@@ -212,6 +234,7 @@ async def _create_datasheet_in_tx(
     conn: asyncpg.Connection,
     asset: AssetDatasheetCreate,
     organization: str,
+    revision_context: AssetRevisionContext | None = None,
 ) -> AssetIngestResult:
     duplicate_id = await _find_duplicate_datasheet(conn, asset)
     if duplicate_id is not None:
@@ -228,11 +251,13 @@ async def _create_datasheet_in_tx(
         """
         INSERT INTO datasheets (
             publication_year, resource_type, resource_type_general, size, format, version,
-            is_private, status, created_at, updated_at, dataset_schema_id, publisher_id
+            is_private, status, created_at, updated_at, dataset_schema_id, publisher_id,
+            asset_version, previous_version_id, root_version_id
         )
         VALUES (
             $1, $2, $3, $4, $5, $6,
-            $7, 'approved', NOW(), NOW(), $8, $9
+            $7, 'approved', NOW(), NOW(), $8, $9,
+            $10, $11, $12
         )
         RETURNING identifier
         """,
@@ -245,7 +270,21 @@ async def _create_datasheet_in_tx(
         asset.is_private,
         asset.dataset_schema_id,
         publisher_id,
+        revision_context.asset_version if revision_context else 1,
+        revision_context.previous_version_id if revision_context else None,
+        revision_context.root_version_id if revision_context else None,
     )
+
+    if revision_context is None:
+        await conn.execute(
+            """
+            UPDATE datasheets
+            SET root_version_id = $2
+            WHERE identifier = $1
+            """,
+            datasheet_id,
+            datasheet_id,
+        )
 
     await _insert_many(
         conn,

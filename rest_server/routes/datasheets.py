@@ -45,6 +45,7 @@ def _normalize_polygon(value):
 async def list_datasheets(
     pool: asyncpg.Pool = Depends(get_pool),
     include_private: bool = Depends(get_include_private),
+    q: str | None = Query(default=None, max_length=255),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
 ):
@@ -52,14 +53,60 @@ async def list_datasheets(
 
     Summary view flattens the first title, creator, and subject (category) per datasheet.
     """
-    where = "" if include_private else " WHERE d.is_private = false"
+    params: list[object] = []
+    filters: list[str] = []
+    if not include_private:
+        filters.append("d.is_private = false")
+    query_text = q.strip() if q else None
+    if query_text:
+        params.append(f"%{query_text}%")
+        filters.append(
+            f"""(
+                EXISTS (
+                    SELECT 1
+                    FROM datasheet_titles dt
+                    WHERE dt.datasheet_id = d.identifier
+                      AND dt.title ILIKE ${len(params)}
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM datasheet_creators dc
+                    WHERE dc.datasheet_id = d.identifier
+                      AND dc.creator_name ILIKE ${len(params)}
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM datasheet_descriptions dd
+                    WHERE dd.datasheet_id = d.identifier
+                      AND dd.description ILIKE ${len(params)}
+                )
+            )"""
+        )
+    where = f"WHERE {' AND '.join(filters)}" if filters else ""
+    params.extend([limit, skip])
     query = f"""
+        WITH ranked AS (
+            SELECT
+                d.identifier,
+                d.asset_version,
+                d.previous_version_id,
+                COALESCE(d.root_version_id, d.identifier) AS root_version_id,
+                ROW_NUMBER() OVER (
+                    PARTITION BY COALESCE(d.root_version_id, d.identifier)
+                    ORDER BY d.asset_version DESC, d.identifier DESC
+                ) AS rn
+            FROM datasheets d
+            {where}
+        )
         SELECT
             d.identifier,
+            d.asset_version,
+            d.previous_version_id,
+            d.root_version_id,
             t.title,
             c.creator,
             s.subject AS category
-        FROM datasheets d
+        FROM ranked d
         LEFT JOIN LATERAL (
             SELECT title
             FROM datasheet_titles
@@ -81,18 +128,21 @@ async def list_datasheets(
             ORDER BY id
             LIMIT 1
         ) AS s ON TRUE
-        {where}
-        ORDER BY d.identifier
-        LIMIT $1 OFFSET $2
+        WHERE d.rn = 1
+        ORDER BY LOWER(COALESCE(t.title, '')), d.identifier
+        LIMIT ${len(params) - 1} OFFSET ${len(params)}
     """
     async with pool.acquire() as conn:
-        rows = await conn.fetch(query, limit, skip)
+        rows = await conn.fetch(query, *params)
     return [
         DatasheetSummary(
             identifier=r["identifier"],
             title=r["title"] or "",
             creator=r["creator"],
             category=r["category"],
+            asset_version=int(r["asset_version"] or 1),
+            previous_version_id=int(r["previous_version_id"]) if r["previous_version_id"] is not None else None,
+            root_version_id=int(r["root_version_id"]) if r["root_version_id"] is not None else None,
         )
         for r in rows
     ]
@@ -117,6 +167,9 @@ async def get_datasheet(
             d.is_private,
             d.updated_at,
             d.dataset_schema_id,
+            d.asset_version,
+            d.previous_version_id,
+            COALESCE(d.root_version_id, d.identifier) AS root_version_id,
             p.name AS publisher_name,
             p.publisher_identifier,
             p.publisher_identifier_scheme,
@@ -270,6 +323,9 @@ async def get_datasheet(
         is_private=row["is_private"],
         updated_at=row["updated_at"].isoformat() if row["updated_at"] else None,
         dataset_schema_id=row["dataset_schema_id"],
+        asset_version=int(row["asset_version"] or 1),
+        previous_version_id=int(row["previous_version_id"]) if row["previous_version_id"] is not None else None,
+        root_version_id=int(row["root_version_id"]) if row["root_version_id"] is not None else None,
         creators=[
             DatasheetCreator(
                 creator_name=r["creator_name"],

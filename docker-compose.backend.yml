@@ -35,6 +35,10 @@ services:
       PATRA_ASSET_INGEST_KEYS_JSON: '{"org-a":"change-me"}'
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ../../src:/app/src:ro
+      - ../../PATRA:/app/PATRA
+      - ./rest_server:/app/rest_server:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
       interval: 30s

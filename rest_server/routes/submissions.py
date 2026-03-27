@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, sta
 from rest_server.database import get_pool
 from rest_server.deps import get_request_actor, require_admin_actor
 from rest_server.ingest_models import AssetDatasheetCreate, AssetModelCardCreate
-from rest_server.routes.assets import _create_datasheet_in_tx, _create_model_card_in_tx
+from rest_server.routes.assets import AssetRevisionContext, _create_datasheet_in_tx, _create_model_card_in_tx
 from rest_server.workflow_models import (
     SubmissionBulkCreate,
     SubmissionBulkCreateResult,
@@ -40,6 +40,48 @@ def _row_to_submission(row: asyncpg.Record) -> SubmissionRecord:
         created_asset_id=row["created_asset_id"],
         created_asset_type=row["created_asset_type"],
         error_message=row["error_message"],
+    )
+
+
+async def _resolve_model_card_revision_context(
+    conn: asyncpg.Connection,
+    previous_asset_id: int,
+) -> AssetRevisionContext:
+    row = await conn.fetchrow(
+        """
+        SELECT id, asset_version, COALESCE(root_version_id, id) AS root_version_id
+        FROM model_cards
+        WHERE id = $1
+        """,
+        previous_asset_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Source model card not found for edit request")
+    return AssetRevisionContext(
+        asset_version=int(row["asset_version"] or 1) + 1,
+        previous_version_id=int(row["id"]),
+        root_version_id=int(row["root_version_id"]),
+    )
+
+
+async def _resolve_datasheet_revision_context(
+    conn: asyncpg.Connection,
+    previous_asset_id: int,
+) -> AssetRevisionContext:
+    row = await conn.fetchrow(
+        """
+        SELECT identifier, asset_version, COALESCE(root_version_id, identifier) AS root_version_id
+        FROM datasheets
+        WHERE identifier = $1
+        """,
+        previous_asset_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Source datasheet not found for edit request")
+    return AssetRevisionContext(
+        asset_version=int(row["asset_version"] or 1) + 1,
+        previous_version_id=int(row["identifier"]),
+        root_version_id=int(row["root_version_id"]),
     )
 
 
@@ -213,14 +255,37 @@ async def review_submission(
             created_asset_id = row["created_asset_id"]
             created_asset_type = row["created_asset_type"]
             error_message = None
+            submission_data = _decode_json_column(row["data"])
 
             if payload.status == "approved" and row["status"] != "approved":
                 if row["submission_type"] == "model_card":
                     asset = AssetModelCardCreate.model_validate(_decode_json_column(row["asset_payload"]))
-                    ingest_result = await _create_model_card_in_tx(conn, asset, "tapis-review")
+                    revision_context = None
+                    if submission_data.get("intake_method") == "edit_existing_asset":
+                        revision_context = await _resolve_model_card_revision_context(
+                            conn,
+                            int(submission_data.get("existing_asset_id", 0)),
+                        )
+                    ingest_result = await _create_model_card_in_tx(
+                        conn,
+                        asset,
+                        "tapis-review",
+                        revision_context=revision_context,
+                    )
                 else:
                     asset = AssetDatasheetCreate.model_validate(_decode_json_column(row["asset_payload"]))
-                    ingest_result = await _create_datasheet_in_tx(conn, asset, "tapis-review")
+                    revision_context = None
+                    if submission_data.get("intake_method") == "edit_existing_asset":
+                        revision_context = await _resolve_datasheet_revision_context(
+                            conn,
+                            int(submission_data.get("existing_asset_id", 0)),
+                        )
+                    ingest_result = await _create_datasheet_in_tx(
+                        conn,
+                        asset,
+                        "tapis-review",
+                        revision_context=revision_context,
+                    )
 
                 created_asset_id = ingest_result.asset_id
                 created_asset_type = row["submission_type"]
