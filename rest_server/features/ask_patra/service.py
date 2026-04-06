@@ -13,7 +13,6 @@ from rest_server.deps import PatraActor
 from rest_server.features.ask_patra.models import AskPatraCitation, AskPatraMessage
 from rest_server.features.ask_patra.prompts import DEFAULT_BEHAVIOR_PROMPT, DEFAULT_SYSTEM_PROMPT, ensure_prompt_templates
 from rest_server.features.shared.openai_compat import chat_text_with_model_fallback
-from rest_server.patra_agent_service import DEFAULT_LLM_API_BASE, DEFAULT_LLM_API_KEY, DEFAULT_LLM_MODEL
 
 
 STOPWORDS = {
@@ -43,12 +42,12 @@ def _prompts_dir() -> Path:
 
 
 def _provider_label() -> str:
-    api_base = os.getenv("ASK_PATRA_LLM_API_BASE", DEFAULT_LLM_API_BASE)
+    api_base = os.getenv("ASK_PATRA_LLM_API_BASE", "").strip()
     if "litellm.pods.tacc.tapis.io" in api_base:
         return "SambaNova via LiteLLM"
-    if "127.0.0.1:1234" in api_base or "localhost:1234" in api_base:
-        return "LM Studio"
-    return "OpenAI-compatible provider"
+    if api_base:
+        return "PATRA AI"
+    return "PATRA AI (code fallback)"
 
 
 def ensure_ask_patra_storage() -> list:
@@ -239,13 +238,16 @@ def _message_payload(messages: list[dict]) -> list[AskPatraMessage]:
     return [AskPatraMessage.model_validate(item) for item in messages]
 
 
-def _resolve_llm_auth(api_base: str) -> tuple[str | None, dict[str, str]]:
+def _resolve_llm_auth(api_base: str, request_tapis_token: str | None) -> tuple[str | None, dict[str, str]]:
     extra_headers: dict[str, str] = {}
     service_tapis_token = os.getenv("ASK_PATRA_TAPIS_TOKEN", "").strip()
     if "litellm.pods.tacc.tapis.io" in (api_base or "").lower() and service_tapis_token:
         extra_headers["X-Tapis-Token"] = service_tapis_token
         return None, extra_headers
-    api_key = os.getenv("ASK_PATRA_LLM_API_KEY", DEFAULT_LLM_API_KEY)
+    if "litellm.pods.tacc.tapis.io" in (api_base or "").lower() and (request_tapis_token or "").strip():
+        extra_headers["X-Tapis-Token"] = request_tapis_token.strip()
+        return None, extra_headers
+    api_key = os.getenv("ASK_PATRA_LLM_API_KEY", "").strip() or None
     return api_key, extra_headers
 
 
@@ -256,6 +258,7 @@ async def answer_question(
     message: str,
     conversation_id: str | None = None,
     reset: bool = False,
+    request_tapis_token: str | None = None,
 ) -> tuple[str, str, str | None, list[AskPatraCitation], list[AskPatraMessage], list]:
     starters = ensure_ask_patra_storage()
     conversation_id = conversation_id or uuid.uuid4().hex
@@ -280,10 +283,10 @@ async def answer_question(
         },
     ]
 
-    api_base = os.getenv("ASK_PATRA_LLM_API_BASE", DEFAULT_LLM_API_BASE)
-    api_key, extra_headers = _resolve_llm_auth(api_base)
+    api_base = os.getenv("ASK_PATRA_LLM_API_BASE", "").strip()
+    api_key, extra_headers = _resolve_llm_auth(api_base, request_tapis_token)
     model = os.getenv("ASK_PATRA_LLM_MODEL", "").strip() or None
-    enabled = os.getenv("ASK_PATRA_LLM_ENABLED", "true").strip().lower() == "true"
+    enabled = os.getenv("ASK_PATRA_LLM_ENABLED", "true").strip().lower() == "true" and bool(api_base)
 
     mode = "code_fallback"
     answer = _fallback_answer(message, citations)
