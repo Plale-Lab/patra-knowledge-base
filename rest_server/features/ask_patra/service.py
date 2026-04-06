@@ -239,6 +239,16 @@ def _message_payload(messages: list[dict]) -> list[AskPatraMessage]:
     return [AskPatraMessage.model_validate(item) for item in messages]
 
 
+def _resolve_llm_auth(api_base: str) -> tuple[str | None, dict[str, str]]:
+    extra_headers: dict[str, str] = {}
+    service_tapis_token = os.getenv("ASK_PATRA_TAPIS_TOKEN", "").strip()
+    if "litellm.pods.tacc.tapis.io" in (api_base or "").lower() and service_tapis_token:
+        extra_headers["X-Tapis-Token"] = service_tapis_token
+        return None, extra_headers
+    api_key = os.getenv("ASK_PATRA_LLM_API_KEY", DEFAULT_LLM_API_KEY)
+    return api_key, extra_headers
+
+
 async def answer_question(
     conn: asyncpg.Connection,
     *,
@@ -271,7 +281,7 @@ async def answer_question(
     ]
 
     api_base = os.getenv("ASK_PATRA_LLM_API_BASE", DEFAULT_LLM_API_BASE)
-    api_key = os.getenv("ASK_PATRA_LLM_API_KEY", DEFAULT_LLM_API_KEY)
+    api_key, extra_headers = _resolve_llm_auth(api_base)
     model = os.getenv("ASK_PATRA_LLM_MODEL", "").strip() or None
     enabled = os.getenv("ASK_PATRA_LLM_ENABLED", "true").strip().lower() == "true"
 
@@ -285,6 +295,7 @@ async def answer_question(
                 api_base=api_base,
                 model=model,
                 api_key=api_key,
+                extra_headers=extra_headers,
                 messages=llm_messages,
                 timeout_seconds=int(os.getenv("ASK_PATRA_LLM_TIMEOUT_SECONDS", "60") or "60"),
                 temperature=0.2,

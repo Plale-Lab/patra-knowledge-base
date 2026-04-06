@@ -5,6 +5,11 @@ from typing import Any
 import httpx
 
 
+def _is_litellm_tapis_host(api_base: str) -> bool:
+    lowered = (api_base or "").lower()
+    return "litellm.pods.tacc.tapis.io" in lowered
+
+
 def build_chat_completions_url(api_base: str) -> str:
     base = (api_base or "").rstrip("/")
     if base.endswith("/chat/completions"):
@@ -18,6 +23,9 @@ def build_models_url(api_base: str) -> str:
     base = (api_base or "").rstrip("/")
     if base.endswith("/models"):
         return base
+    if _is_litellm_tapis_host(base):
+        litellm_base = base.removesuffix("/v1")
+        return f"{litellm_base}/models"
     if base.endswith("/v1"):
         return f"{base}/models"
     return f"{base}/v1/models"
@@ -64,9 +72,10 @@ def list_available_models(
     *,
     api_base: str,
     api_key: str | None = None,
+    extra_headers: dict[str, str] | None = None,
     timeout_seconds: int = 10,
 ) -> list[str]:
-    headers: dict[str, str] = {}
+    headers: dict[str, str] = dict(extra_headers or {})
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     with httpx.Client(timeout=timeout_seconds) as client:
@@ -87,11 +96,12 @@ def chat_text(
     model: str,
     messages: list[dict[str, str]],
     api_key: str | None = None,
+    extra_headers: dict[str, str] | None = None,
     timeout_seconds: int = 60,
     temperature: float = 0.2,
     max_tokens: int = 1200,
 ) -> tuple[str, str]:
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", **(extra_headers or {})}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     payload = {
@@ -120,11 +130,17 @@ def chat_text_with_model_fallback(
     model: str | None,
     messages: list[dict[str, str]],
     api_key: str | None = None,
+    extra_headers: dict[str, str] | None = None,
     timeout_seconds: int = 60,
     temperature: float = 0.2,
     max_tokens: int = 1200,
 ) -> tuple[str, str]:
-    candidates = [model] if model else list_available_models(api_base=api_base, api_key=api_key, timeout_seconds=min(10, timeout_seconds))
+    candidates = [model] if model else list_available_models(
+        api_base=api_base,
+        api_key=api_key,
+        extra_headers=extra_headers,
+        timeout_seconds=min(10, timeout_seconds),
+    )
     attempted: list[str] = []
     last_error: Exception | None = None
     for candidate in candidates:
@@ -137,6 +153,7 @@ def chat_text_with_model_fallback(
                 model=candidate,
                 messages=messages,
                 api_key=api_key,
+                extra_headers=extra_headers,
                 timeout_seconds=timeout_seconds,
                 temperature=temperature,
                 max_tokens=max_tokens,
