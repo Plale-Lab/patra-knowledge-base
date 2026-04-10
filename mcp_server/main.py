@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 
 import uvicorn
 from mcp.server.fastmcp import FastMCP
@@ -20,6 +21,7 @@ from mcp_server.db import (
 log = logging.getLogger(__name__)
 
 mcp = FastMCP("patra-mcp")
+_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 # ---------------------------------------------------------------------------
 # Resources
@@ -392,6 +394,7 @@ async def get_datasheet(ds_id: int) -> str:
 @mcp.tool()
 async def list_experiment_users(domain: str) -> str:
     """List distinct users with experiment events in a domain."""
+    domain = "digital-ag" if domain == "digital-agriculture" else domain
     tables = DOMAIN_TABLES.get(domain)
     if not tables:
         return json.dumps({"error": f"Unknown domain: {domain}", "valid_domains": list(DOMAIN_TABLES.keys())})
@@ -408,6 +411,7 @@ async def list_experiment_users(domain: str) -> str:
 @mcp.tool()
 async def get_experiment_summary(domain: str, user_id: str) -> str:
     """Experiment summary table for a given user in a domain."""
+    domain = "digital-ag" if domain == "digital-agriculture" else domain
     tables = DOMAIN_TABLES.get(domain)
     if not tables:
         return json.dumps({"error": f"Unknown domain: {domain}", "valid_domains": list(DOMAIN_TABLES.keys())})
@@ -431,8 +435,35 @@ async def get_experiment_summary(domain: str, user_id: str) -> str:
 
 
 @mcp.tool()
+async def list_user_experiments(domain: str, user_id: str) -> str:
+    """List experiments for a user in a domain (for experiment selector)."""
+    domain = "digital-ag" if domain == "digital-agriculture" else domain
+    tables = DOMAIN_TABLES.get(domain)
+    if not tables:
+        return json.dumps({"error": f"Unknown domain: {domain}", "valid_domains": list(DOMAIN_TABLES.keys())})
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            f"""
+            SELECT DISTINCT
+                experiment_id,
+                MIN(image_receiving_timestamp) AS start_at,
+                device_id,
+                model_id
+            FROM {tables['events']}
+            WHERE user_id = $1
+            GROUP BY experiment_id, device_id, model_id
+            ORDER BY MIN(image_receiving_timestamp) DESC
+            """,
+            user_id,
+        )
+    return json.dumps([_serialize_row(r) for r in rows])
+
+
+@mcp.tool()
 async def get_experiment_detail(domain: str, experiment_id: str) -> str:
     """Full experiment detail — latest metrics snapshot."""
+    domain = "digital-ag" if domain == "digital-agriculture" else domain
     tables = DOMAIN_TABLES.get(domain)
     if not tables:
         return json.dumps({"error": f"Unknown domain: {domain}", "valid_domains": list(DOMAIN_TABLES.keys())})
@@ -452,6 +483,7 @@ async def get_experiment_detail(domain: str, experiment_id: str) -> str:
 @mcp.tool()
 async def get_experiment_images(domain: str, experiment_id: str, skip: int = 0, limit: int = 100) -> str:
     """Raw image data table for an experiment (paginated)."""
+    domain = "digital-ag" if domain == "digital-agriculture" else domain
     tables = DOMAIN_TABLES.get(domain)
     if not tables:
         return json.dumps({"error": f"Unknown domain: {domain}", "valid_domains": list(DOMAIN_TABLES.keys())})
@@ -474,6 +506,7 @@ async def get_experiment_images(domain: str, experiment_id: str, skip: int = 0, 
 @mcp.tool()
 async def get_experiment_power(domain: str, experiment_id: str) -> str:
     """Power consumption breakdown for an experiment."""
+    domain = "digital-ag" if domain == "digital-agriculture" else domain
     tables = DOMAIN_TABLES.get(domain)
     if not tables:
         return json.dumps({"error": f"Unknown domain: {domain}", "valid_domains": list(DOMAIN_TABLES.keys())})
@@ -486,6 +519,93 @@ async def get_experiment_power(domain: str, experiment_id: str) -> str:
     if not r:
         return json.dumps(None)
     return json.dumps(_serialize_row(r))
+
+
+@mcp.tool()
+async def list_stored_procedures(schema: str = "public", include_system: bool = False) -> str:
+    """List PostgreSQL procedures/functions available in a schema."""
+    if not _IDENT_RE.match(schema):
+        return json.dumps({"error": f"Invalid schema identifier: {schema}"})
+
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT
+                n.nspname AS schema_name,
+                p.proname AS routine_name,
+                p.prokind,
+                pg_get_function_identity_arguments(p.oid) AS arg_signature,
+                pg_get_function_result(p.oid) AS result_type
+            FROM pg_proc p
+            JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE ($1::bool OR n.nspname NOT IN ('pg_catalog', 'information_schema'))
+              AND n.nspname = $2
+            ORDER BY n.nspname, p.proname, arg_signature
+            """,
+            include_system,
+            schema,
+        )
+
+    routines = []
+    for row in rows:
+        kind = row["prokind"]
+        routines.append(
+            {
+                "schema": row["schema_name"],
+                "name": row["routine_name"],
+                "kind": "procedure" if kind == "p" else "function",
+                "arguments": row["arg_signature"],
+                "returns": row["result_type"],
+            }
+        )
+    return json.dumps(routines)
+
+
+@mcp.tool()
+async def call_stored_procedure(name: str, args_json: str = "[]", schema: str = "public") -> str:
+    """Call a PostgreSQL stored function/procedure by name with positional args."""
+    if not _IDENT_RE.match(schema):
+        return json.dumps({"error": f"Invalid schema identifier: {schema}"})
+    if not _IDENT_RE.match(name):
+        return json.dumps({"error": f"Invalid routine identifier: {name}"})
+
+    try:
+        args = json.loads(args_json)
+    except Exception as exc:  # noqa: BLE001
+        return json.dumps({"error": f"Invalid args_json: {exc}"})
+
+    if not isinstance(args, list):
+        return json.dumps({"error": "args_json must decode to a JSON array"})
+
+    pool = get_pool()
+    async with pool.acquire() as conn:
+        routine = await conn.fetchrow(
+            """
+            SELECT p.prokind
+            FROM pg_proc p
+            JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = $1 AND p.proname = $2
+            ORDER BY p.oid
+            LIMIT 1
+            """,
+            schema,
+            name,
+        )
+        if not routine:
+            return json.dumps({"error": f"Routine not found: {schema}.{name}"})
+
+        placeholders = ", ".join(f"${idx}" for idx in range(1, len(args) + 1))
+        qualified = f'"{schema}"."{name}"'
+
+        if routine["prokind"] == "p":
+            sql = f"CALL {qualified}({placeholders})"
+            await conn.execute(sql, *args)
+            return json.dumps({"status": "ok", "routine": f"{schema}.{name}", "kind": "procedure"})
+
+        sql = f"SELECT * FROM {qualified}({placeholders})"
+        rows = await conn.fetch(sql, *args)
+        return json.dumps([_serialize_row(r) for r in rows])
 
 
 # ---------------------------------------------------------------------------

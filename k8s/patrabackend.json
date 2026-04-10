@@ -1,0 +1,71 @@
+{
+    "pod_id": "patrabackend",
+    "image": "plalelab/patra-backend:2026-04-07-topology-sync",
+    "template": "",
+    "description": "Patra API for model cards and datasheets",
+    "command": [],
+    "environment_variables": {
+      "DATABASE_URL": "postgresql://patradb:zBQDRU23BVwoXh8zGh77eumDWOVR7c@patradb.pods.icicleai.tapis.io:5432/patradb?sslmode=require",
+      "JWT_SECRET": "change-me-in-production",
+      "ASK_PATRA_LLM_API_BASE": "https://litellm.pods.tacc.tapis.io",
+      "ASK_PATRA_LLM_MODEL": "llama3.3-70b-instruct",
+      "ENABLE_ASK_PATRA": "false",
+      "ENABLE_AUTOMATED_INGESTION": "false",
+      "ENABLE_DOMAIN_EXPERIMENTS": "true"
+    },
+    "secret_map": {},
+    "status_requested": "ON",
+    "volume_mounts": {},
+    "time_to_stop_default": -1,
+    "networking": {
+      "default": {
+        "protocol": "http",
+        "port": 8000,
+        "url": "patrabackend.pods.icicleai.tapis.io",
+        "ip_allow_list": [],
+        "tapis_auth": false,
+        "tapis_auth_response_headers": {},
+        "tapis_auth_allowed_users": [
+          "AUTHORIZED_USERS"
+        ],
+        "tapis_auth_return_path": "/",
+        "tapis_auth_excluded_paths": [],
+        "tapis_auth_excluded_path_regex": [],
+        "cors_allow_origins": [],
+        "cors_allow_methods": [],
+        "cors_allow_headers": [],
+        "cors_allow_credentials": false,
+        "cors_max_age": 100,
+        "tapis_ui_uri": "",
+        "tapis_ui_uri_redirect": false,
+        "tapis_ui_uri_description": "",
+        "proxy_compression": true,
+        "proxy_compression_encodings": [
+          "zstd",
+          "br",
+          "gzip"
+        ],
+        "proxy_compression_excluded_content_types": [],
+        "proxy_compression_min_response_body_bytes": 1024
+      }
+    },
+    "resources": {
+      "cpu_request": 250,
+      "cpu_limit": 2000,
+      "mem_request": 256,
+      "mem_limit": 3072,
+      "ephemeral_storage_request": -1,
+      "ephemeral_storage_limit": -1,
+      "gpus": 0
+    },
+    "compute_queue": "default",
+    "status": "AVAILABLE",
+    "status_container": {
+      "phase": "Running",
+      "start_time": "2026-04-08T01:07:20.000000",
+      "message": "Pod is running."
+    },
+    "creation_ts": "2026-03-07T00:36:50.844874",
+    "update_ts": "2026-03-07T00:36:50.845091",
+    "start_instance_ts": "2026-04-08T01:08:09.996251"
+  }

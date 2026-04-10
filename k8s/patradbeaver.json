@@ -1,0 +1,72 @@
+{
+    "pod_id": "patradbeaver",
+    "image": "dbeaver/cloudbeaver:latest",
+    "template": "",
+    "description": "CloudBeaver web database client",
+    "environment_variables": {},
+    "secret_map": {},
+    "status_requested": "ON",
+    "volume_mounts": {
+      "/opt/cloudbeaver/workspace": {
+        "type": "tapisvolume",
+        "source_id": "patradb",
+        "mounted_by": "neelk",
+        "sub_path": "",
+        "read_only": false,
+        "config_permissions": "0644",
+        "config_update_mode": "always"
+      }
+    },
+    "time_to_stop_default": -1,
+    "networking": {
+      "default": {
+        "protocol": "http",
+        "port": 8978,
+        "url": "patradbeaver.pods.icicleai.tapis.io",
+        "ip_allow_list": [],
+        "tapis_auth": true,
+        "tapis_auth_response_headers": {},
+        "tapis_auth_allowed_users": [
+          "AUTHORIZED_USERS"
+        ],
+        "tapis_auth_return_path": "/",
+        "tapis_auth_excluded_paths": [],
+        "tapis_auth_excluded_path_regex": [],
+        "cors_allow_origins": [],
+        "cors_allow_methods": [],
+        "cors_allow_headers": [],
+        "cors_allow_credentials": false,
+        "cors_max_age": 100,
+        "tapis_ui_uri": "",
+        "tapis_ui_uri_redirect": false,
+        "tapis_ui_uri_description": "",
+        "proxy_compression": true,
+        "proxy_compression_encodings": [
+          "zstd",
+          "br",
+          "gzip"
+        ],
+        "proxy_compression_excluded_content_types": [],
+        "proxy_compression_min_response_body_bytes": 1024
+      }
+    },
+    "resources": {
+      "cpu_request": 250,
+      "cpu_limit": 1000,
+      "mem_request": 512,
+      "mem_limit": 2048,
+      "ephemeral_storage_request": -1,
+      "ephemeral_storage_limit": -1,
+      "gpus": 0
+    },
+    "compute_queue": "default",
+    "status": "AVAILABLE",
+    "status_container": {
+      "phase": "Running",
+      "start_time": "2026-03-30T16:58:03.000000",
+      "message": "Pod is running."
+    },
+    "creation_ts": "2026-03-06T20:27:00.369571",
+    "update_ts": "2026-03-06T20:27:00.369846",
+    "start_instance_ts": "2026-03-30T16:58:39.846767"
+  }

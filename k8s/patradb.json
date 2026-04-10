@@ -1,0 +1,86 @@
+{
+    "pod_id": "patradb",
+    "image": "postgres:18.2",
+    "template": "postgres:18.2@2026-02-19-21:51:35",
+    "description": "Postgres 18 template",
+    "command": [
+      "docker-entrypoint.sh"
+    ],
+    "arguments": [
+      "-c",
+      "ssl=on",
+      "-c",
+      "ssl_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem",
+      "-c",
+      "ssl_key_file=/etc/ssl/private/ssl-cert-snakeoil.key"
+    ],
+    "environment_variables": {
+      "POSTGRES_USER": "patradb",
+      "POSTGRES_PASSWORD": "zBQDRU23BVwoXh8zGh77eumDWOVR7c"
+    },
+    "secret_map": {},
+    "status_requested": "ON",
+    "volume_mounts": {
+      "/var/lib/postgresql": {
+        "type": "tapisvolume",
+        "source_id": "patradbpostgres",
+        "mounted_by": "neelk",
+        "sub_path": "/postgresql",
+        "read_only": false,
+        "config_permissions": "0644",
+        "config_update_mode": "always"
+      }
+    },
+    "time_to_stop_default": -1,
+    "networking": {
+      "default": {
+        "protocol": "postgres",
+        "port": 5432,
+        "url": "patradb.pods.icicleai.tapis.io",
+        "ip_allow_list": [],
+        "tapis_auth": false,
+        "tapis_auth_response_headers": {},
+        "tapis_auth_allowed_users": [
+          "AUTHORIZED_USERS"
+        ],
+        "tapis_auth_return_path": "/",
+        "tapis_auth_excluded_paths": [],
+        "tapis_auth_excluded_path_regex": [],
+        "cors_allow_origins": [],
+        "cors_allow_methods": [],
+        "cors_allow_headers": [],
+        "cors_allow_credentials": false,
+        "cors_max_age": 100,
+        "tapis_ui_uri": "",
+        "tapis_ui_uri_redirect": false,
+        "tapis_ui_uri_description": "",
+        "proxy_compression": false,
+        "proxy_compression_encodings": [
+          "zstd",
+          "br",
+          "gzip"
+        ],
+        "proxy_compression_excluded_content_types": [],
+        "proxy_compression_min_response_body_bytes": 1024
+      }
+    },
+    "resources": {
+      "cpu_request": 250,
+      "cpu_limit": 2000,
+      "mem_request": 256,
+      "mem_limit": 3072,
+      "ephemeral_storage_request": -1,
+      "ephemeral_storage_limit": -1,
+      "gpus": 0
+    },
+    "compute_queue": "default",
+    "status": "AVAILABLE",
+    "status_container": {
+      "phase": "Running",
+      "start_time": "2026-03-30T16:55:48.000000",
+      "message": "Pod is running."
+    },
+    "creation_ts": "2026-03-06T20:17:05.490789",
+    "update_ts": "2026-03-06T20:17:05.490977",
+    "start_instance_ts": "2026-03-30T16:56:06.758168"
+  }
