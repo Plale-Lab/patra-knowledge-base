@@ -31,7 +31,7 @@ def dummy_response(status_code, json_data):
 @pytest.fixture
 def client(monkeypatch):
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-    from legacy_server.server import app
+    from legacy.legacy_server.server import app
     app.config['TESTING'] = True
     with app.test_client() as client:
         yield client
@@ -200,8 +200,8 @@ def test_register_device_success(client, monkeypatch):
     }
     
     # Mock the database operations
-    monkeypatch.setattr("ingester.neo4j_ingester.MCIngester.check_device_exists", lambda self, device_id: False)
-    monkeypatch.setattr("ingester.neo4j_ingester.MCIngester.add_device", lambda self, device: None)
+    monkeypatch.setattr("legacy.ingester.neo4j_ingester.MCIngester.check_device_exists", lambda self, device_id: False)
+    monkeypatch.setattr("legacy.ingester.neo4j_ingester.MCIngester.add_device", lambda self, device: None)
     
     response = client.post("/device", json=device_data)
     assert response.status_code == 201
@@ -230,7 +230,7 @@ def test_register_device_duplicate_id(client, monkeypatch):
     }
     
     # Mock that device already exists
-    monkeypatch.setattr("ingester.neo4j_ingester.MCIngester.check_device_exists", lambda self, device_id: True)
+    monkeypatch.setattr("legacy.ingester.neo4j_ingester.MCIngester.check_device_exists", lambda self, device_id: True)
     
     response = client.post("/device", json=device_data)
     assert response.status_code == 409
@@ -249,8 +249,8 @@ def test_register_user_success(client, monkeypatch):
     }
     
     # Mock the database operations
-    monkeypatch.setattr("ingester.neo4j_ingester.MCIngester.check_user_exists", lambda self, user_id: False)
-    monkeypatch.setattr("ingester.neo4j_ingester.MCIngester.add_user", lambda self, user: None)
+    monkeypatch.setattr("legacy.ingester.neo4j_ingester.MCIngester.check_user_exists", lambda self, user_id: False)
+    monkeypatch.setattr("legacy.ingester.neo4j_ingester.MCIngester.add_user", lambda self, user: None)
     
     response = client.post("/user", json=user_data)
     assert response.status_code == 201
@@ -279,7 +279,7 @@ def test_register_user_duplicate_id(client, monkeypatch):
     }
     
     # Mock that user already exists
-    monkeypatch.setattr("ingester.neo4j_ingester.MCIngester.check_user_exists", lambda self, user_id: True)
+    monkeypatch.setattr("legacy.ingester.neo4j_ingester.MCIngester.check_user_exists", lambda self, user_id: True)
     
     response = client.post("/user", json=user_data)
     assert response.status_code == 409

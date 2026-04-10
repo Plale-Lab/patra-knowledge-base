@@ -1,5 +1,5 @@
-from parser.json_mc_parser import parse_json_mc
-from neo4j_ingester import MCIngester
+from ..parser.json_mc_parser import parse_json_mc
+from .neo4j_ingester import MCIngester
 import os
 from dotenv import load_dotenv
 

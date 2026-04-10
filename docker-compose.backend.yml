@@ -1,5 +1,5 @@
 # Supported local/dev stack for the active Patra backend.
-# This file replaces the suspended Neo4j-oriented docker-compose.yml for new work.
+# This file replaces the suspended Neo4j-oriented legacy/docker-compose.yml for new work.
 
 services:
   postgres:

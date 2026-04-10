@@ -12,8 +12,8 @@ from urllib.parse import urlparse
 from flask import Flask, request, jsonify, Response
 from flask_restx import Api, Resource
 
-from ingester.neo4j_ingester import MCIngester
-from reconstructor.mc_reconstructor import MCReconstructor
+from legacy.ingester.neo4j_ingester import MCIngester
+from legacy.reconstructor.mc_reconstructor import MCReconstructor
 
 NEO4J_URI = os.getenv("NEO4J_URI")
 NEO4J_USERNAME = os.getenv("NEO4J_USER")

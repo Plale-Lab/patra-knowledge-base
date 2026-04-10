@@ -18,10 +18,10 @@ The Patra Knowledge Base is a system designed to manage and track AI/ML models, 
 Patra's active backend is now the **FastAPI + PostgreSQL** service under `rest_server/`.
 
 The following Neo4j-based components are **retained only for archive/reference compatibility and are no longer part of the active backend path**:
-- `legacy_server/`
+- `legacy/legacy_server/`
 - `mcp_server/`
-- `ingester/neo4j_ingester.py`
-- `reconstructor/mc_reconstructor.py`
+- `legacy/ingester/neo4j_ingester.py`
+- `legacy/reconstructor/mc_reconstructor.py`
 - Neo4j-oriented Docker/Make targets
 
 For all new development, deployment, integration, and operational work, use the PostgreSQL-backed REST API only.
@@ -73,7 +73,7 @@ The FastAPI app is exposed via the `rest_server` package (see `rest_server/main.
 
 The legacy REST server is built using Flask and exposes a RESTful API for interaction with the Patra Knowledge Graph (KG) stored in Neo4j. It is retained in-repo for archive/reference purposes only and is not part of the active backend going forward.
 
-- **Code location**: `legacy_server/`
+- **Code location**: `legacy/legacy_server/`
 - **Default port**: `5002`
 
 Key endpoints include:

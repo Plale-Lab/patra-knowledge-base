@@ -430,12 +430,12 @@ Version `0.1.1` captures the follow-up operational hardening after the PostgreSQ
 
 - Marked Neo4j-oriented files and services as suspended in:
   - `README.md`
-  - `docker-compose.yml`
+  - `legacy/docker-compose.yml`
   - `Makefile`
-  - `legacy_server/server.py`
+  - `legacy/legacy_server/server.py`
   - `mcp_server/main.py`
-  - `ingester/neo4j_ingester.py`
-  - `reconstructor/mc_reconstructor.py`
+  - `legacy/ingester/neo4j_ingester.py`
+  - `legacy/reconstructor/mc_reconstructor.py`
 - Added `/healthz` and `/readyz` to the active FastAPI app.
 - Updated the backend Docker image so it:
   - performs a health check against `/healthz`
@@ -590,7 +590,7 @@ Verified with targeted automated tests:
 ### Operational Notes
 
 - New backend work should target `rest_server/` only.
-- Neo4j-oriented `docker-compose.yml`, `Makefile`, `legacy_server/`, and `mcp_server/` are suspended and retained for archive/reference only.
+- Neo4j-oriented `legacy/docker-compose.yml`, `Makefile`, `legacy/legacy_server/`, and `mcp_server/` are suspended and retained for archive/reference only.
 - External organizations can now inject assets directly through the protected `/v1/assets` API without depending on frontend workflows.
 
 ### Next Steps

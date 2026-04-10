@@ -6,8 +6,8 @@ rest_server/ is the supported runtime and integration surface.
 
 import uuid
 
-from ingester.database import GraphDB
-from ingester.graph_embedder import embed_model_versioning
+from .database import GraphDB
+from .graph_embedder import embed_model_versioning
 
 
 class MCIngester:
