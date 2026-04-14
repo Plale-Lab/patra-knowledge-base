@@ -43,6 +43,10 @@ This update records the backend changes for Ask Patra identity, ICICLE context, 
   - `403 Forbidden`
   - `"Pods Service tapis_auth - not authenticated"`
 - If LiteLLM still returns the same error after this change, the remaining issue is the upstream token itself or the LiteLLM pod's accepted auth policy, not PATRA route registration or local prompt wiring.
+- Added non-sensitive token-expiry diagnostics for Ask Patra and Intent Schema auth debug logs:
+  - `service_token_expiry`
+  - `request_token_expiry`
+- These diagnostics report whether the JWT is expired and its approximate remaining lifetime, without printing token contents.
 
 ## Version 0.7.2 - 2026-04-13
 

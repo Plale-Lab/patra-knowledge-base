@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
 import re
+from datetime import datetime, timezone
 
 from rest_server.features.intent_schema.models import (
     IntentSchemaBootstrapResponse,
@@ -84,6 +86,24 @@ def _looks_like_placeholder_token(value: str) -> bool:
     )
 
 
+def _token_expiry_status(value: str) -> str:
+    try:
+        parts = value.split(".")
+        if len(parts) < 2:
+            return "non_jwt"
+        payload_segment = parts[1]
+        padded = payload_segment + "=" * (-len(payload_segment) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(padded.encode("utf-8")))
+        exp = payload.get("exp")
+        if not isinstance(exp, (int, float)):
+            return "jwt_no_exp"
+        seconds_remaining = int(exp - datetime.now(timezone.utc).timestamp())
+        state = "expired" if seconds_remaining <= 0 else "valid"
+        return f"{state}:seconds_remaining={seconds_remaining}"
+    except Exception:  # noqa: BLE001
+        return "unreadable"
+
+
 def _resolve_llm_auth(api_base: str, request_tapis_token: str | None = None) -> tuple[str | None, dict[str, str]]:
     extra_headers: dict[str, str] = {}
     lowered = (api_base or "").lower()
@@ -99,7 +119,9 @@ def _resolve_llm_auth(api_base: str, request_tapis_token: str | None = None) -> 
             f"litellm=True service_token_present={bool(service_tapis_token)} "
             f"service_token_usable={service_token_usable} "
             f"request_token_present={bool(request_token)} request_token_usable={request_token_usable} "
-            f"selected={selected}",
+            f"selected={selected} "
+            f"service_token_expiry={_token_expiry_status(service_tapis_token) if service_tapis_token else 'absent'} "
+            f"request_token_expiry={_token_expiry_status(request_token) if request_token else 'absent'}",
             flush=True,
         )
         if token:
