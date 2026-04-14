@@ -1,5 +1,38 @@
 # Dev Log
 
+## Version 0.7.3 - 2026-04-14
+
+### Context
+
+This update records the backend changes for Ask Patra identity, ICICLE context, and pod-config-managed admin authorization.
+
+### Backend Changes
+
+- Updated the Ask Patra system prompt so the assistant identifies as `Patra`, an ICICLE-aligned PATRA assistant, rather than a generic chatbot or "Ask Patra".
+- Added ICICLE context to the default system prompt: ICICLE is the NSF AI Institute for Intelligent Cyberinfrastructure with Computational Learning in the Environment and focuses on trustworthy, democratized AI for cyberinfrastructure-backed science and engineering workflows.
+- Kept Ask Patra LLM observability in the backend request path:
+  - `ask_patra.answer_question.llm_config`
+  - `ask_patra.answer_question.llm_decision`
+  - `ask_patra.answer_question.llm_attempt`
+  - `ask_patra.answer_question.llm_success`
+  - `ask_patra.answer_question.llm_failed`
+  - `openai_compat.chat_text.request`
+- Clarified runtime behavior: Ask Patra does not call the LLM for low-information greeting messages, but does attempt the LLM for eligible record-search and general-help turns when LLM config and auth are available.
+- Moved admin authorization to pod configuration:
+  - `PATRA_ADMIN_USERS`
+  - `ADMIN_USERNAMES`
+- Removed the hardcoded default admin user list from the backend.
+- Made the backend authoritative for admin role decisions. Client-supplied `X-Patra-Role: admin` is ignored unless the request username is present in the configured admin list.
+
+### Operational Notes
+
+- To grant admin access in a pod, set `PATRA_ADMIN_USERS` to a comma-separated list of exact Tapis usernames, for example `williamq96,neelk,nkarthikeyan`.
+- The frontend may use the same env var for UI visibility, but the backend remains the source of truth for write/admin authorization.
+
+### Validation
+
+- `python -m compileall rest_server` passed.
+
 ## Version 0.7.2 - 2026-04-13
 
 ### Context

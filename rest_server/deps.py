@@ -17,7 +17,8 @@ ASSET_INGEST_KEYS_ENV = "PATRA_ASSET_INGEST_KEYS_JSON"
 PATRA_USERNAME_HEADER = "X-Patra-Username"
 PATRA_ROLE_HEADER = "X-Patra-Role"
 PATRA_ADMIN_USERS_ENV = "PATRA_ADMIN_USERS"
-DEFAULT_ADMIN_USERS = frozenset({"williamq96"})
+ADMIN_USERNAMES_ENV = "ADMIN_USERNAMES"
+DEFAULT_ADMIN_USERS = frozenset()
 DEV_OPEN_ACCESS_ENV = "PATRA_DEV_OPEN_ACCESS"
 DEV_OPEN_ACCESS_TOKEN = "__patra_dev_open_access__"
 
@@ -59,7 +60,14 @@ def get_include_private(request: Request) -> bool:
 
 @lru_cache(maxsize=1)
 def get_admin_users() -> set[str]:
-    configured = os.getenv(PATRA_ADMIN_USERS_ENV, "").strip()
+    configured = ",".join(
+        value
+        for value in (
+            os.getenv(PATRA_ADMIN_USERS_ENV, "").strip(),
+            os.getenv(ADMIN_USERNAMES_ENV, "").strip(),
+        )
+        if value
+    )
     values = {item.strip().lower() for item in configured.split(",") if item.strip()}
     return set(DEFAULT_ADMIN_USERS) | values
 
@@ -80,7 +88,9 @@ def get_request_actor(request: Request) -> PatraActor:
         return PatraActor(username=username or None)
 
     normalized_username = username.lower() if username else None
-    is_admin = requested_role == "admin" or (normalized_username in get_admin_users() if normalized_username else False)
+    is_admin = normalized_username in get_admin_users() if normalized_username else False
+    if requested_role == "admin" and not is_admin:
+        log.warning("Ignoring client-requested admin role for non-admin user: %s", username or "<missing>")
     return PatraActor(
         username=username or None,
         role="admin" if is_admin else "user",
