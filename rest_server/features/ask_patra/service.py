@@ -1081,8 +1081,9 @@ def _resolve_llm_auth(api_base: str, request_tapis_token: str | None) -> tuple[s
             flush=True,
         )
         if token:
-            log.info("ask_patra.resolve_llm_auth using %s tapis token for LiteLLM host auth_mode=tapis_x_header", selected)
+            log.info("ask_patra.resolve_llm_auth using %s tapis token for LiteLLM host auth_mode=tapis_x_header_and_bearer", selected)
             extra_headers["X-Tapis-Token"] = token
+            extra_headers["Authorization"] = f"Bearer {token}"
             return None, extra_headers
     api_key = os.getenv("ASK_PATRA_LLM_API_KEY", "").strip() or None
     print(

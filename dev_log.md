@@ -33,6 +33,17 @@ This update records the backend changes for Ask Patra identity, ICICLE context, 
 
 - `python -m compileall rest_server` passed.
 
+### Follow-up LLM Auth Compatibility
+
+- Updated LiteLLM-bound requests to send the selected Tapis token through both:
+  - `X-Tapis-Token`
+  - `Authorization: Bearer <token>`
+- Updated Ask Patra, Intent Schema, and LLM Test routes so they can recover a request token from `Authorization: Bearer` when `X-Tapis-Token` is absent.
+- This targets the deployed LiteLLM failure:
+  - `403 Forbidden`
+  - `"Pods Service tapis_auth - not authenticated"`
+- If LiteLLM still returns the same error after this change, the remaining issue is the upstream token itself or the LiteLLM pod's accepted auth policy, not PATRA route registration or local prompt wiring.
+
 ## Version 0.7.2 - 2026-04-13
 
 ### Context

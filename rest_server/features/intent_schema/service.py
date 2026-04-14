@@ -104,8 +104,9 @@ def _resolve_llm_auth(api_base: str, request_tapis_token: str | None = None) -> 
         )
         if token:
             extra_headers["X-Tapis-Token"] = token
+            extra_headers["Authorization"] = f"Bearer {token}"
             log.info(
-                "intent_schema.resolve_llm_auth using %s tapis token for LiteLLM auth_mode=tapis_x_header",
+                "intent_schema.resolve_llm_auth using %s tapis token for LiteLLM auth_mode=tapis_x_header_and_bearer",
                 selected,
             )
             return None, extra_headers

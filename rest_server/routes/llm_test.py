@@ -39,6 +39,16 @@ class LlmTestChatResponse(BaseModel):
     requested_model: str | None = None
 
 
+def _request_tapis_token(request: Request) -> str | None:
+    x_tapis_token = (request.headers.get("X-Tapis-Token") or "").strip()
+    if x_tapis_token:
+        return x_tapis_token
+    authorization = (request.headers.get("Authorization") or "").strip()
+    if authorization.lower().startswith("bearer "):
+        return authorization[7:].strip() or None
+    return None
+
+
 @router.post("/chat", response_model=LlmTestChatResponse)
 async def chat(
     payload: LlmTestChatRequest,
@@ -47,7 +57,7 @@ async def chat(
 ) -> LlmTestChatResponse:
     api_base = _llm_api_base()
     model = _llm_model()
-    request_tapis_token = (request.headers.get("X-Tapis-Token") or "").strip() or None
+    request_tapis_token = _request_tapis_token(request)
     print(
         "llm_test.route_debug "
         f"path={request.url.path} actor={getattr(actor, 'username', None)} role={getattr(actor, 'role', None)} "

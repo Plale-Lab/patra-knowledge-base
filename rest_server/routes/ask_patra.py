@@ -21,6 +21,16 @@ router = APIRouter(prefix="/api/ask-patra", tags=["ask-patra"])
 log = logging.getLogger(__name__)
 
 
+def _request_tapis_token(request: Request) -> str | None:
+    x_tapis_token = (request.headers.get("X-Tapis-Token") or "").strip()
+    if x_tapis_token:
+        return x_tapis_token
+    authorization = (request.headers.get("Authorization") or "").strip()
+    if authorization.lower().startswith("bearer "):
+        return authorization[7:].strip() or None
+    return None
+
+
 @router.get("/bootstrap", response_model=AskPatraBootstrapResponse)
 async def ask_patra_bootstrap(actor=Depends(get_request_actor)):
     log.info("ask_patra.bootstrap actor=%s role=%s", getattr(actor, "username", None), getattr(actor, "role", None))
@@ -62,7 +72,7 @@ async def _ask_patra_chat_impl(
             message=payload.message,
             conversation_id=payload.conversation_id,
             reset=payload.reset,
-            request_tapis_token=(request.headers.get("X-Tapis-Token") or "").strip() or None,
+            request_tapis_token=_request_tapis_token(request),
         )
     response = AskPatraChatResponse(
         conversation_id=conversation_id,
@@ -154,7 +164,7 @@ async def ask_patra_execute(
         query=payload.query,
         prefilled_payload=payload.prefilled_payload,
         disable_llm=payload.disable_llm,
-        request_tapis_token=(request.headers.get("X-Tapis-Token") or "").strip() or None,
+        request_tapis_token=_request_tapis_token(request),
     )
     response = AskPatraExecuteResponse(
         conversation_id=conversation_id,

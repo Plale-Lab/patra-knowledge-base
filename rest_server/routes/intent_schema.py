@@ -14,6 +14,16 @@ from rest_server.features.intent_schema.service import bootstrap_payload, genera
 router = APIRouter(prefix="/api/intent-schema", tags=["intent-schema"])
 
 
+def _request_tapis_token(request: Request) -> str | None:
+    x_tapis_token = (request.headers.get("X-Tapis-Token") or "").strip()
+    if x_tapis_token:
+        return x_tapis_token
+    authorization = (request.headers.get("Authorization") or "").strip()
+    if authorization.lower().startswith("bearer "):
+        return authorization[7:].strip() or None
+    return None
+
+
 @router.get("/bootstrap", response_model=IntentSchemaBootstrapResponse)
 async def bootstrap(actor: PatraActor = Depends(require_authenticated_actor)) -> IntentSchemaBootstrapResponse:
     return bootstrap_payload()
@@ -37,5 +47,5 @@ async def generate(
         intent_text=payload.intent_text,
         context=payload.context,
         max_fields=payload.max_fields,
-        request_tapis_token=(request.headers.get("X-Tapis-Token") or "").strip() or None,
+        request_tapis_token=_request_tapis_token(request),
     )
