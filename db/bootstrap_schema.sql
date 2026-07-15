@@ -381,10 +381,22 @@ BEGIN
     RAISE EXCEPTION 'CKN ingest: edge_device "%" not registered in patra (edge_devices.device_id)', NEW.device_id;
   END IF;
 
-  -- 3. Resolve model id (CKN sends the patra-assigned bigint as text in NEW.model_id).
+  -- 3. Resolve model id. Two conventions arrive here:
+  --    (a) the patradb models.id bigint, as text (e.g. "22")
+  --    (b) camera-traps' native Patra model-card UUID, optionally suffixed "-model"
+  --        (e.g. "ea991e85-feaa-4781-a297-4d7bec1a69b1-model") -- installer/compile.py's
+  --        defaults and image_generating_plugin always send this form.
   SELECT id INTO v_model_id FROM models WHERE id::text = NEW.model_id;
+
   IF v_model_id IS NULL THEN
-    RAISE EXCEPTION 'CKN ingest: model "%" not registered in patra (models.id)', NEW.model_id;
+    SELECT m.id INTO v_model_id
+    FROM models m
+    JOIN model_cards mc ON mc.id = m.model_card_id
+    WHERE mc.uuid::text = regexp_replace(NEW.model_id, '-model$', '');
+  END IF;
+
+  IF v_model_id IS NULL THEN
+    RAISE EXCEPTION 'CKN ingest: model "%" not registered in patra (models.id or model_cards.uuid)', NEW.model_id;
   END IF;
 
   -- 4. Upsert experiment keyed on experiment_uid; on subsequent events,
