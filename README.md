@@ -66,6 +66,8 @@ The primary REST API is implemented with FastAPI and backed by PostgreSQL. It is
   - `GET /datasheets` – List datasheets (public-only by default; private when authorized).
   - `GET /datasheet/{identifier}` – Retrieve a single datasheet with normalized DataCite-style metadata.
   - `PUT /datasheet/{identifier}` – Update a datasheet, including title and description (authenticated).
+  - `POST /v1/assets/model-cards` – Create a model card (protected asset ingest API, see below).
+  - `POST /v1/assets/datasheets` – Create a datasheet (protected asset ingest API, see below).
 
 The FastAPI app is exposed via the `rest_server` package (see `rest_server/main.py`) and is built into the Docker image `plalelab/patra-backend:latest` using `rest_server/Dockerfile` (see `scripts/build-push-backend.sh`).
 
@@ -181,7 +183,123 @@ Legacy Neo4j compose assets remain in the repository for archival reference only
     docker compose -f docker-compose.backend.yml down
     ```
 
-### 3. Using the MCP Server (Optional)
+### 3. Creating Model Cards and Datasheets (Asset Ingest API)
+
+External systems and partner organizations publish and manage model cards and datasheets through the protected asset ingest API on the primary REST server, mounted under `/v1/assets`:
+
+| Endpoint                          | Method | Description                                                |
+|------------------------------------|--------|--------------------------------------------------------------|
+| `/v1/assets/model-cards`           | POST   | Create a model card.                                          |
+| `/v1/assets/datasheets`            | POST   | Create a datasheet.                                            |
+| `/v1/assets/model-cards/bulk`      | POST   | Create up to 25 model cards in one request.                    |
+| `/v1/assets/datasheets/bulk`       | POST   | Create up to 25 datasheets in one request.                     |
+| `/v1/assets/model-cards/{asset_id}`| PATCH  | Update an existing model card.                                 |
+| `/v1/assets/datasheets/{asset_id}` | PATCH  | Update an existing datasheet.                                  |
+| `/v1/assets/records`               | GET    | List/search model cards and datasheets available for editing.  |
+
+**Authentication**: send one of the following on every request:
+- `X-Asset-Org: <org>` + `X-Asset-Api-Key: <secret>` (or `Authorization: Bearer <secret>`) — org/secret pairs are configured via the `PATRA_ASSET_INGEST_KEYS_JSON` environment variable.
+- `X-Tapis-Token: <token>` — used by the Patra frontend for logged-in user submissions.
+
+For brevity, the examples below set the org/key headers once as shell variables:
+```bash
+export PATRA_URL=http://localhost:8000
+export ASSET_ORG=<your-org>
+export ASSET_KEY=<your-secret>
+```
+
+**Create a model card:**
+```bash
+curl -X POST "$PATRA_URL/v1/assets/model-cards" \
+  -H "X-Asset-Org: $ASSET_ORG" \
+  -H "X-Asset-Api-Key: $ASSET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "External Model",
+    "version": "1.0",
+    "short_description": "Injected model card",
+    "author": "Org A",
+    "ai_model": {
+      "name": "External Model Binary",
+      "version": "1.0",
+      "framework": "PyTorch",
+      "model_type": "cnn",
+      "model_metrics": {"top_1_accuracy": 0.92}
+    }
+  }'
+```
+Returns `201 Created` with `{"asset_type": "model_card", "asset_id": <int>, "asset_uuid": <uuid>, "organization": "...", "created": true}`. A duplicate (same name/version/author) returns `409 Conflict`.
+
+**Create a datasheet:**
+```bash
+curl -X POST "$PATRA_URL/v1/assets/datasheets" \
+  -H "X-Asset-Org: $ASSET_ORG" \
+  -H "X-Asset-Api-Key: $ASSET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "publication_year": 2025,
+    "version": "1.0",
+    "titles": [{"title": "Partner Dataset"}],
+    "creators": [{"creator_name": "Org A"}]
+  }'
+```
+Returns `201 Created` with `{"asset_type": "datasheet", "asset_id": <int>, ...}`, or `409 Conflict` on a duplicate.
+
+**Bulk create model cards** (up to 25 per request; each item is validated and inserted independently, so partial success is possible):
+```bash
+curl -X POST "$PATRA_URL/v1/assets/model-cards/bulk" \
+  -H "X-Asset-Org: $ASSET_ORG" \
+  -H "X-Asset-Api-Key: $ASSET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "assets": [
+      {"name": "Model One", "version": "1.0"},
+      {"name": "Model Two", "version": "2.0"}
+    ]
+  }'
+```
+Returns `200 OK` with `{"total", "created", "duplicates", "failed", "results": [...]}`, one result entry per input item (with an `error` message for any that failed). `POST /v1/assets/datasheets/bulk` takes the same shape with `"assets"` as a list of datasheet payloads.
+
+**Update a model card or datasheet** (`PATCH`, full replacement of the asset's editable fields — send the complete payload, not a partial diff):
+```bash
+curl -X PATCH "$PATRA_URL/v1/assets/model-cards/123" \
+  -H "X-Asset-Org: $ASSET_ORG" \
+  -H "X-Asset-Api-Key: $ASSET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "External Model",
+    "version": "1.1",
+    "short_description": "Updated description",
+    "author": "Org A"
+  }'
+```
+```bash
+curl -X PATCH "$PATRA_URL/v1/assets/datasheets/456" \
+  -H "X-Asset-Org: $ASSET_ORG" \
+  -H "X-Asset-Api-Key: $ASSET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "publication_year": 2025,
+    "version": "1.1",
+    "titles": [{"title": "Partner Dataset (revised)"}],
+    "creators": [{"creator_name": "Org A"}]
+  }'
+```
+Returns `200 OK` with `{"asset_type", "asset_id", "organization", "updated": true}`.
+
+**List/search editable records:**
+```bash
+curl -G "$PATRA_URL/v1/assets/records" \
+  -H "X-Asset-Org: $ASSET_ORG" \
+  -H "X-Asset-Api-Key: $ASSET_KEY" \
+  --data-urlencode "q=titanic" \
+  --data-urlencode "limit=20"
+```
+Returns `200 OK` with a JSON array of `{"asset_type", "asset_id", "title", "subtitle", "description", "kind_label", "updated_at"}`, covering both model cards and approved datasheets, newest-updated first. `q` is optional (omit it to list recent records) and `limit` defaults to 20 (max 100).
+
+See `rest_server/asset_create_models.py` for the full set of optional fields (e.g. `bias_analysis`, `xai_analysis`, DataCite-style datasheet fields like `subjects`, `dates`, `funding_references`), and `examples/model_cards/` / `examples/datasheets/` for larger sample payloads.
+
+### 4. Using the MCP Server (Optional)
 
 This section describes the suspended in-repo Neo4j-based MCP server for archival/reference purposes only. It is not part of the active PostgreSQL backend and should not be used for new integrations.
 
