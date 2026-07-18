@@ -31,6 +31,12 @@ Table model_cards {
   model_requirements text[]
   bias_analysis jsonb
   xai_analysis jsonb
+
+  training_datasheet_id bigint [ref: > datasheets.identifier]
+
+  indexes {
+    (training_datasheet_id)
+  }
 }
 
 Table models {

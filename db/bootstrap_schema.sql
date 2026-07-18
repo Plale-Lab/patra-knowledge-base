@@ -565,3 +565,18 @@ BEGIN
     ALTER TABLE datasheets ADD CONSTRAINT datasheets_uuid_key UNIQUE (uuid);
   END IF;
 END $$;
+
+-- ---------------------------------------------------------------------------
+-- model_cards.training_datasheet_id: the datasheet a model was last trained
+-- or fine-tuned on. Nullable, cross-entity link (not a parent/child row), so
+-- deleting the datasheet clears the link rather than blocking the delete or
+-- cascading. Added via ALTER (not inline in the CREATE TABLE above) because
+-- model_cards is defined before datasheets in this file.
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE model_cards
+  ADD COLUMN IF NOT EXISTS training_datasheet_id bigint
+    REFERENCES datasheets(identifier) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_model_cards_training_datasheet_id
+  ON model_cards (training_datasheet_id);

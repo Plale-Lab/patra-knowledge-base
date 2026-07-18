@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from rest_server.database import get_pool
 from rest_server.deps import get_asset_ingest_keys
 from rest_server.main import app
+from tests.conftest import uuid_for_id
 
 
 class MockAssetConn:
@@ -18,8 +19,22 @@ class MockAssetConn:
         self.datasheet_id_seq = 200
         self.executed: list[tuple[str, tuple]] = []
         self.executemany_calls: list[tuple[str, list[tuple]]] = []
+        # Existing model card id returned by the update-path existence check
+        # (_fetch_model_card_snapshot); set to None to simulate a 404.
+        self.existing_model_card_id: int | None = 555
+        # Datasheet identifier resolved for any training_datasheet_uuid
+        # lookup; None simulates "no datasheet matches this uuid".
+        self.datasheet_identifier_for_uuid: int | None = None
 
     async def fetchrow(self, query: str, *args):
+        if "INSERT INTO model_cards" in query:
+            self.model_card_id_seq += 1
+            self.inserted_model_card_ids.append(self.model_card_id_seq)
+            return {"id": self.model_card_id_seq, "uuid": uuid_for_id(self.model_card_id_seq)}
+        if "FROM model_cards" in query and "WHERE id = $1" in query:
+            if self.existing_model_card_id is None:
+                return None
+            return {"id": self.existing_model_card_id}
         if "FROM model_cards" in query:
             if self.model_card_duplicate_queue:
                 return {"id": self.model_card_duplicate_queue.pop(0)}
@@ -31,14 +46,14 @@ class MockAssetConn:
         return None
 
     async def fetchval(self, query: str, *args):
+        if "SELECT identifier FROM datasheets WHERE uuid" in query:
+            return self.datasheet_identifier_for_uuid
         if "SELECT id" in query and "FROM datasheet_publishers" in query:
+            return None
+        if "SELECT id FROM models WHERE model_card_id" in query:
             return None
         if "INSERT INTO datasheet_publishers" in query:
             return 10
-        if "INSERT INTO model_cards" in query:
-            self.model_card_id_seq += 1
-            self.inserted_model_card_ids.append(self.model_card_id_seq)
-            return self.model_card_id_seq
         if "INSERT INTO datasheets" in query:
             self.datasheet_id_seq += 1
             self.inserted_datasheet_ids.append(self.datasheet_id_seq)
@@ -191,6 +206,83 @@ def test_create_model_card_asset_rejects_unsafe_metric_key(asset_client):
         },
     )
     assert response.status_code == 422
+
+
+def test_create_model_card_asset_with_training_datasheet_uuid_success(asset_client):
+    client, conn = asset_client
+    conn.datasheet_identifier_for_uuid = 55
+    response = client.post(
+        "/v1/assets/model-cards",
+        headers=_asset_headers(),
+        json={
+            "name": "Model With Training Data",
+            "training_datasheet_uuid": "00000000-0000-4000-8000-000000000055",
+        },
+    )
+    assert response.status_code == 201
+    assert conn.inserted_model_card_ids
+
+
+def test_create_model_card_asset_rejects_unknown_training_datasheet_uuid(asset_client):
+    client, conn = asset_client
+    conn.datasheet_identifier_for_uuid = None
+    response = client.post(
+        "/v1/assets/model-cards",
+        headers=_asset_headers(),
+        json={
+            "name": "Model With Bad Training Data",
+            "training_datasheet_uuid": "00000000-0000-4000-8000-000000000099",
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_patch_model_card_asset_accepts_sparse_body(asset_client):
+    """Regression test: a partial edit (only the changed field) must not 422
+    just because it omits required-on-create fields like 'name'."""
+    client, conn = asset_client
+    response = client.patch(
+        "/v1/assets/model-cards/100",
+        headers=_asset_headers(),
+        json={"is_private": True},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["asset_type"] == "model_card"
+    assert data["asset_id"] == 100
+
+
+def test_patch_model_card_asset_with_training_datasheet_uuid_success(asset_client):
+    client, conn = asset_client
+    conn.datasheet_identifier_for_uuid = 55
+    response = client.patch(
+        "/v1/assets/model-cards/100",
+        headers=_asset_headers(),
+        json={"training_datasheet_uuid": "00000000-0000-4000-8000-000000000055"},
+    )
+    assert response.status_code == 200
+
+
+def test_patch_model_card_asset_rejects_unknown_training_datasheet_uuid(asset_client):
+    client, conn = asset_client
+    conn.datasheet_identifier_for_uuid = None
+    response = client.patch(
+        "/v1/assets/model-cards/100",
+        headers=_asset_headers(),
+        json={"training_datasheet_uuid": "00000000-0000-4000-8000-000000000099"},
+    )
+    assert response.status_code == 422
+
+
+def test_patch_model_card_asset_returns_404_when_missing(asset_client):
+    client, conn = asset_client
+    conn.existing_model_card_id = None
+    response = client.patch(
+        "/v1/assets/model-cards/100",
+        headers=_asset_headers(),
+        json={"is_private": True},
+    )
+    assert response.status_code == 404
 
 
 def test_create_datasheet_asset_duplicate_returns_409(asset_client):

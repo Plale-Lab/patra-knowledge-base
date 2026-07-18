@@ -59,6 +59,7 @@ def _mc_detail_row(mc_id: int, private: bool) -> dict:
         "foundational_model": "TestModel",
         "category": "classification",
         "documentation": "",
+        "training_datasheet_uuid": None,
         "model_id": mc_id,
         "model_name": "TestModel",
         "model_version": "1.0",
@@ -347,7 +348,7 @@ def _make_mock_pool():
                     "model_id": mc_id,
                 }
             return None
-        if "FROM model_cards" in query and "WHERE uuid = $1" in query and args:
+        if "FROM model_cards mc" in query and "WHERE mc.uuid = $1" in query and args:
             mc_id = _MC_ID_BY_UUID.get(str(args[0]))
             if mc_id is not None:
                 return _mc_detail_row(mc_id, mc_id in PRIVATE_MC_IDS)

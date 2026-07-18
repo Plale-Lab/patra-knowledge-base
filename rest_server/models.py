@@ -82,6 +82,7 @@ class ModelCardDetail(BaseModel):
     categories: Optional[str] = None
     citation: Optional[str] = None
     foundational_model: Optional[str] = None
+    training_datasheet_uuid: Optional[str] = None
     is_private: bool = False
     is_gated: bool = False
     ai_model: Optional[AIModel] = None
@@ -101,6 +102,7 @@ class ModelCardUpdate(BaseModel):
     citation: Optional[str] = None
     documentation: Optional[str] = None
     foundational_model: Optional[str] = None
+    training_datasheet_uuid: Optional[str] = None
     is_private: Optional[bool] = None
     is_gated: Optional[bool] = None
     ai_model: Optional[AIModelUpdate] = None

@@ -56,6 +56,7 @@ class AssetModelCardCreate(BaseModel):
     foundational_model: str | None = None
     category: str | None = None
     documentation: str | None = None
+    training_datasheet_uuid: UUID | None = None
     is_private: bool = False
     is_gated: bool = False
     ai_model: AssetAIModelCreate | None = None

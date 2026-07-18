@@ -133,6 +133,19 @@ async def list_datasheets(
     ]
 
 
+async def resolve_datasheet_identifier(conn: asyncpg.Connection, datasheet_uuid: UUID | str) -> int | None:
+    """Resolve a datasheet's external uuid to its internal bigint identifier (FK target).
+
+    Returns None for both a malformed uuid string and a well-formed uuid that
+    doesn't match any datasheet, so callers can treat both as "not found".
+    """
+    try:
+        normalized = str(UUID(str(datasheet_uuid)))
+    except ValueError:
+        return None
+    return await conn.fetchval("SELECT identifier FROM datasheets WHERE uuid = $1::uuid", normalized)
+
+
 @router.get("/datasheet/{uuid}", response_model=DatasheetDetail)
 async def get_datasheet(
     uuid: UUID,

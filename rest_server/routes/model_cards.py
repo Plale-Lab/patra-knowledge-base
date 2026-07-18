@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 import asyncpg
 
@@ -22,6 +22,7 @@ from rest_server.models import (
     ModelDeployment,
     ModelDownloadURL,
 )
+from rest_server.routes.datasheets import resolve_datasheet_identifier
 
 router = APIRouter(tags=["model_cards"])
 log = logging.getLogger(__name__)
@@ -208,13 +209,15 @@ async def _fetch_external_model_metadata(model_card_row: asyncpg.Record) -> dict
 async def _get_model_card_base_row(conn: asyncpg.Connection, model_card_uuid: UUID) -> asyncpg.Record | None:
     return await conn.fetchrow(
         """
-        SELECT id, uuid, name, version, short_description,
-               full_description, keywords, author, citation,
-               input_data, input_type, output_data,
-               foundational_model, category, documentation,
-               is_private, is_gated
-        FROM model_cards
-        WHERE uuid = $1
+        SELECT mc.id, mc.uuid, mc.name, mc.version, mc.short_description,
+               mc.full_description, mc.keywords, mc.author, mc.citation,
+               mc.input_data, mc.input_type, mc.output_data,
+               mc.foundational_model, mc.category, mc.documentation,
+               mc.is_private, mc.is_gated,
+               ds.uuid AS training_datasheet_uuid
+        FROM model_cards mc
+        LEFT JOIN datasheets ds ON ds.identifier = mc.training_datasheet_id
+        WHERE mc.uuid = $1
         """,
         model_card_uuid,
     )
@@ -393,6 +396,11 @@ async def get_model_card(
         categories=model_card_row["category"],
         citation=model_card_row["citation"],
         foundational_model=model_card_row["foundational_model"],
+        training_datasheet_uuid=(
+            str(model_card_row["training_datasheet_uuid"])
+            if model_card_row["training_datasheet_uuid"]
+            else None
+        ),
         is_private=bool(model_card_row["is_private"]),
         is_gated=is_gated,
         ai_model=ai_model,
@@ -415,9 +423,101 @@ _MC_UPDATE_COLUMNS = {
     "citation": "citation",
     "documentation": "documentation",
     "foundational_model": "foundational_model",
+    "training_datasheet_uuid": "training_datasheet_id",
     "is_private": "is_private",
     "is_gated": "is_gated",
 }
+
+
+async def _apply_model_card_update(
+    conn: asyncpg.Connection,
+    model_card_id: int,
+    body: ModelCardUpdate,
+) -> None:
+    """Apply a partial update to a model_cards row and its linked models row.
+
+    Shared by PUT /modelcard/{uuid} and PATCH /v1/assets/model-cards/{asset_id}
+    so both update paths resolve training_datasheet_uuid and build the SET
+    clause the same way.
+    """
+    updates = body.model_dump(exclude_none=True)
+    ai_model_updates = updates.pop("ai_model", None) or {}
+
+    training_datasheet_uuid = updates.pop("training_datasheet_uuid", None)
+    if training_datasheet_uuid is not None:
+        datasheet_id = await resolve_datasheet_identifier(conn, training_datasheet_uuid)
+        if datasheet_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="training_datasheet_uuid does not match an existing datasheet",
+            )
+        updates["training_datasheet_uuid"] = datasheet_id
+
+    if not updates and not ai_model_updates:
+        return
+
+    # Update model_cards table
+    if updates:
+        set_parts = []
+        values = []
+        idx = 2  # $1 is the id
+        for field, value in updates.items():
+            col = _MC_UPDATE_COLUMNS.get(field)
+            if col is None:
+                continue
+            set_parts.append(f"{col} = ${idx}")
+            values.append(value)
+            idx += 1
+
+        if set_parts:
+            set_parts.append("updated_at = NOW()")
+            query = f"UPDATE model_cards SET {', '.join(set_parts)} WHERE id = $1"
+            result = await conn.execute(query, model_card_id, *values)
+            if result == "UPDATE 0":
+                raise asset_not_available_or_visible()
+
+    # Update or create linked models row
+    if ai_model_updates:
+        existing_model = await conn.fetchval(
+            "SELECT id FROM models WHERE model_card_id = $1", model_card_id,
+        )
+        set_parts = []
+        values = []
+        idx = 2
+        for field, value in ai_model_updates.items():
+            col = _AI_MODEL_UPDATE_COLUMNS.get(field)
+            if col is None:
+                continue
+            set_parts.append(f"{col} = ${idx}")
+            values.append(value)
+            idx += 1
+
+        if set_parts and existing_model is not None:
+            set_parts.append("updated_at = NOW()")
+            query = f"UPDATE models SET {', '.join(set_parts)} WHERE model_card_id = $1"
+            await conn.execute(query, model_card_id, *values)
+        elif set_parts and existing_model is None:
+            # Insert new models row
+            col_names = ["model_card_id", "created_at", "updated_at"]
+            col_vals = [model_card_id]
+            placeholders = ["$1", "NOW()", "NOW()"]
+            p_idx = 2
+            for field, value in ai_model_updates.items():
+                col = _AI_MODEL_UPDATE_COLUMNS.get(field)
+                if col is None:
+                    continue
+                col_names.append(col)
+                col_vals.append(value)
+                placeholders.append(f"${p_idx}")
+                p_idx += 1
+            # name is NOT NULL in schema — default to model card name
+            if "name" not in ai_model_updates:
+                mc_name = await conn.fetchval("SELECT name FROM model_cards WHERE id = $1", model_card_id)
+                col_names.append("name")
+                col_vals.append(mc_name or "Unnamed")
+                placeholders.append(f"${p_idx}")
+            query = f"INSERT INTO models ({', '.join(col_names)}) VALUES ({', '.join(placeholders)})"
+            await conn.execute(query, *col_vals)
 
 
 @router.put("/modelcard/{uuid}", response_model=ModelCardDetail)
@@ -431,78 +531,9 @@ async def update_model_card(
     """Update a model card and its linked AI model (authenticated users only)."""
     async with pool.acquire() as conn:
         id_val = await conn.fetchval("SELECT id FROM model_cards WHERE uuid = $1", uuid)
-    if id_val is None:
-        raise asset_not_available_or_visible()
-    id = int(id_val)
-
-    updates = body.model_dump(exclude_none=True)
-    ai_model_updates = updates.pop("ai_model", None) or {}
-    if not updates and not ai_model_updates:
-        return await get_model_card(uuid=uuid, pool=pool, include_private=include_private)
-
-    async with pool.acquire() as conn:
-        # Update model_cards table
-        if updates:
-            set_parts = []
-            values = []
-            idx = 2  # $1 is the id
-            for field, value in updates.items():
-                col = _MC_UPDATE_COLUMNS.get(field)
-                if col is None:
-                    continue
-                set_parts.append(f"{col} = ${idx}")
-                values.append(value)
-                idx += 1
-
-            if set_parts:
-                set_parts.append("updated_at = NOW()")
-                query = f"UPDATE model_cards SET {', '.join(set_parts)} WHERE id = $1"
-                result = await conn.execute(query, id, *values)
-                if result == "UPDATE 0":
-                    raise asset_not_available_or_visible()
-
-        # Update or create linked models row
-        if ai_model_updates:
-            existing_model = await conn.fetchval(
-                "SELECT id FROM models WHERE model_card_id = $1", id,
-            )
-            set_parts = []
-            values = []
-            idx = 2
-            for field, value in ai_model_updates.items():
-                col = _AI_MODEL_UPDATE_COLUMNS.get(field)
-                if col is None:
-                    continue
-                set_parts.append(f"{col} = ${idx}")
-                values.append(value)
-                idx += 1
-
-            if set_parts and existing_model is not None:
-                set_parts.append("updated_at = NOW()")
-                query = f"UPDATE models SET {', '.join(set_parts)} WHERE model_card_id = $1"
-                await conn.execute(query, id, *values)
-            elif set_parts and existing_model is None:
-                # Insert new models row
-                col_names = ["model_card_id", "created_at", "updated_at"]
-                col_vals = [id]
-                placeholders = ["$1", "NOW()", "NOW()"]
-                p_idx = 2
-                for field, value in ai_model_updates.items():
-                    col = _AI_MODEL_UPDATE_COLUMNS.get(field)
-                    if col is None:
-                        continue
-                    col_names.append(col)
-                    col_vals.append(value)
-                    placeholders.append(f"${p_idx}")
-                    p_idx += 1
-                # name is NOT NULL in schema — default to model card name
-                if "name" not in ai_model_updates:
-                    mc_name = await conn.fetchval("SELECT name FROM model_cards WHERE id = $1", id)
-                    col_names.append("name")
-                    col_vals.append(mc_name or "Unnamed")
-                    placeholders.append(f"${p_idx}")
-                query = f"INSERT INTO models ({', '.join(col_names)}) VALUES ({', '.join(placeholders)})"
-                await conn.execute(query, *col_vals)
+        if id_val is None:
+            raise asset_not_available_or_visible()
+        await _apply_model_card_update(conn, int(id_val), body)
 
     return await get_model_card(uuid=uuid, pool=pool, include_private=include_private)
 

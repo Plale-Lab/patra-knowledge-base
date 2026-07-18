@@ -11,7 +11,7 @@ _TEST_MC_UUID = uuid_for_id(1)
 
 class MissingModelConn:
     async def fetchrow(self, query: str, *args):
-        if "FROM model_cards" in query and "WHERE uuid = $1" in query:
+        if "FROM model_cards mc" in query and "WHERE mc.uuid = $1" in query:
             return {
                 "id": 1,
                 "uuid": _TEST_MC_UUID,
@@ -28,6 +28,7 @@ class MissingModelConn:
                 "foundational_model": "SAM3",
                 "category": "segmentation",
                 "documentation": None,
+                "training_datasheet_uuid": None,
                 "is_private": False,
                 "is_gated": False,
             }

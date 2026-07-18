@@ -17,7 +17,9 @@ from rest_server.asset_create_models import (
     AssetModelCardCreate,
     AssetUpdateResult,
 )
-from rest_server.models import EditableRecordSummary
+from rest_server.models import EditableRecordSummary, ModelCardUpdate
+from rest_server.routes.datasheets import resolve_datasheet_identifier
+from rest_server.routes.model_cards import _apply_model_card_update
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1/assets", tags=["assets"])
@@ -57,18 +59,29 @@ async def _create_model_card_in_tx(
             duplicate=True,
         )
 
+    training_datasheet_id = None
+    if asset.training_datasheet_uuid is not None:
+        training_datasheet_id = await resolve_datasheet_identifier(conn, asset.training_datasheet_uuid)
+        if training_datasheet_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="training_datasheet_uuid does not match an existing datasheet",
+            )
+
     model_card_row = await conn.fetchrow(
         """
         INSERT INTO model_cards (
             name, version, uuid, is_private, is_gated,
             short_description, full_description, keywords, author, citation,
             input_data, input_type, output_data, foundational_model, category, documentation,
+            training_datasheet_id,
             created_at, updated_at
         )
         VALUES (
             $1, $2, COALESCE($3::uuid, gen_random_uuid()), $4, $5,
             $6, $7, $8, $9, $10,
             $11, $12, $13, $14, $15, $16,
+            $17,
             NOW(), NOW()
         )
         RETURNING id, uuid
@@ -89,6 +102,7 @@ async def _create_model_card_in_tx(
         asset.foundational_model,
         asset.category,
         asset.documentation,
+        training_datasheet_id,
     )
     model_card_id = model_card_row["id"]
     model_card_uuid = model_card_row["uuid"]
@@ -682,7 +696,7 @@ async def _fetch_asset_snapshot(conn: asyncpg.Connection, asset_type: str, asset
 async def _update_model_card_in_tx(
     conn: asyncpg.Connection,
     asset_id: int,
-    asset: AssetModelCardCreate,
+    asset: ModelCardUpdate,
     organization: str,
     changed_by: str | None,
 ) -> AssetUpdateResult:
@@ -690,89 +704,7 @@ async def _update_model_card_in_tx(
     if existing is None:
         raise HTTPException(status_code=404, detail="Model card not found")
 
-    await conn.execute(
-        """
-        UPDATE model_cards SET
-            name = $2, version = $3, is_private = $4, is_gated = $5,
-            short_description = $6, full_description = $7, keywords = $8, author = $9, citation = $10,
-            input_data = $11, input_type = $12, output_data = $13, foundational_model = $14,
-            category = $15, documentation = $16, updated_at = NOW()
-        WHERE id = $1
-        """,
-        asset_id,
-        asset.name,
-        asset.version,
-        asset.is_private,
-        asset.is_gated,
-        asset.short_description,
-        asset.full_description,
-        asset.keywords,
-        asset.author,
-        asset.citation,
-        asset.input_data,
-        asset.input_type,
-        asset.output_data,
-        asset.foundational_model,
-        asset.category,
-        asset.documentation,
-    )
-
-    if asset.ai_model is not None:
-        existing_model_id = await conn.fetchval(
-            "SELECT id FROM models WHERE model_card_id = $1", asset_id
-        )
-        if existing_model_id is not None:
-            await conn.execute(
-                """
-                UPDATE models SET
-                    name = $2, version = $3, description = $4, owner = $5, location = $6,
-                    license = $7, framework = $8, model_type = $9, test_accuracy = $10,
-                    model_metrics = $11::jsonb, inference_labels = $12::jsonb, model_structure = $13::jsonb,
-                    updated_at = NOW()
-                WHERE model_card_id = $1
-                """,
-                asset_id,
-                asset.ai_model.name,
-                asset.ai_model.version,
-                asset.ai_model.description,
-                asset.ai_model.owner,
-                asset.ai_model.location,
-                asset.ai_model.license,
-                asset.ai_model.framework,
-                asset.ai_model.model_type,
-                asset.ai_model.test_accuracy,
-                json.dumps(asset.ai_model.model_metrics),
-                json.dumps(asset.ai_model.inference_labels),
-                json.dumps(asset.ai_model.model_structure),
-            )
-        else:
-            await conn.execute(
-                """
-                INSERT INTO models (
-                    name, version, description, owner, location, license, framework, model_type,
-                    test_accuracy, model_metrics, inference_labels, model_structure,
-                    created_at, updated_at, model_card_id
-                )
-                VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8,
-                    $9, $10::jsonb, $11::jsonb, $12::jsonb,
-                    NOW(), NOW(), $13
-                )
-                """,
-                asset.ai_model.name,
-                asset.ai_model.version,
-                asset.ai_model.description,
-                asset.ai_model.owner,
-                asset.ai_model.location,
-                asset.ai_model.license,
-                asset.ai_model.framework,
-                asset.ai_model.model_type,
-                asset.ai_model.test_accuracy,
-                json.dumps(asset.ai_model.model_metrics),
-                json.dumps(asset.ai_model.inference_labels),
-                json.dumps(asset.ai_model.model_structure),
-                asset_id,
-            )
+    await _apply_model_card_update(conn, asset_id, asset)
 
     return AssetUpdateResult(
         asset_type="model_card",
@@ -1061,7 +993,7 @@ async def list_editable_records(
 async def update_model_card_asset(
     request: Request,
     asset_id: int = Path(..., ge=1),
-    asset: AssetModelCardCreate = ...,
+    asset: ModelCardUpdate = ...,
     principal: AssetIngestPrincipal = Depends(require_asset_ingest_principal),
     pool: asyncpg.Pool = Depends(get_pool),
 ):
