@@ -17,6 +17,8 @@ class ModelCardSummary(BaseModel):
     version: Optional[str] = None
     short_description: Optional[str] = None
     is_gated: bool = False
+    is_private: bool = False
+    updated_at: Optional[str] = None
 
 
 class AIModel(BaseModel):
@@ -229,6 +231,8 @@ class DatasheetSummary(BaseModel):
     title: str
     creator: Optional[str] = None
     category: Optional[str] = None
+    is_private: bool = False
+    updated_at: Optional[str] = None
 
 
 class DatasheetDetail(BaseModel):
@@ -271,6 +275,7 @@ class DatasheetUpdate(BaseModel):
 class EditableRecordSummary(BaseModel):
     asset_type: str
     asset_id: int
+    asset_uuid: str
     title: str
     subtitle: Optional[str] = None
     description: Optional[str] = None

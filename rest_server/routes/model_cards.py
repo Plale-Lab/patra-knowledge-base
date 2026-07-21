@@ -331,7 +331,7 @@ async def list_model_cards(
     where = f"WHERE {' AND '.join(filters)}" if filters else ""
     params.extend([limit, skip])
     query = f"""
-        SELECT id, uuid, name, category, author, version, short_description, is_gated
+        SELECT id, uuid, name, category, author, version, short_description, is_gated, is_private, updated_at
         FROM model_cards
         {where}
         ORDER BY LOWER(name), id
@@ -349,6 +349,8 @@ async def list_model_cards(
             version=r["version"],
             short_description=r["short_description"],
             is_gated=r["is_gated"],
+            is_private=bool(r["is_private"]),
+            updated_at=r["updated_at"].isoformat() if r["updated_at"] else None,
         )
         for r in rows
     ]

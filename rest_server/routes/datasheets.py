@@ -92,7 +92,9 @@ async def list_datasheets(
             d.uuid,
             t.title,
             c.creator,
-            s.subject AS category
+            s.subject AS category,
+            d.is_private,
+            d.updated_at
         FROM datasheets d
         LEFT JOIN LATERAL (
             SELECT title
@@ -128,6 +130,8 @@ async def list_datasheets(
             title=r["title"] or "",
             creator=r["creator"],
             category=r["category"],
+            is_private=bool(r["is_private"]),
+            updated_at=r["updated_at"].isoformat() if r["updated_at"] else None,
         )
         for r in rows
     ]

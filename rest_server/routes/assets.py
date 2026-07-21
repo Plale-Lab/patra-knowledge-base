@@ -944,6 +944,7 @@ async def list_editable_records(
             SELECT
                 'model_card' AS asset_type,
                 mc.id AS asset_id,
+                mc.uuid AS asset_uuid,
                 mc.name AS title,
                 mc.author AS subtitle,
                 COALESCE(mc.short_description, mc.full_description, mc.category) AS description,
@@ -957,6 +958,7 @@ async def list_editable_records(
             SELECT
                 'datasheet' AS asset_type,
                 d.identifier AS asset_id,
+                d.uuid AS asset_uuid,
                 COALESCE(dtf.title, 'Untitled datasheet') AS title,
                 COALESCE(dcf.creator_name, p.name, 'Published datasheet') AS subtitle,
                 COALESCE(ddf.description, d.resource_type) AS description,
@@ -979,6 +981,7 @@ async def list_editable_records(
         EditableRecordSummary(
             asset_type=row["asset_type"],
             asset_id=int(row["asset_id"]),
+            asset_uuid=str(row["asset_uuid"]),
             title=row["title"],
             subtitle=row["subtitle"],
             description=row["description"],

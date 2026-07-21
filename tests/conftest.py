@@ -43,6 +43,7 @@ def _mc_row(mc_id: int, private: bool) -> dict:
         "short_description": f"Description for {mc_id}",
         "is_private": private,
         "is_gated": False,
+        "updated_at": datetime(2026, 1, mc_id, 12, 0, tzinfo=timezone.utc),
     }
 
 
@@ -130,6 +131,7 @@ def _ds_row(ident: int, private: bool) -> dict:
         "format": "jpeg",
         "version": "1.0",
         "is_private": private,
+        "updated_at": datetime(2026, 1, ident, 12, 0, tzinfo=timezone.utc),
         # First title / creator / subject used in summary endpoint
         "summary_title": f"Dataset {ident}",
         "summary_creator": "tester",
@@ -279,6 +281,8 @@ def _make_mock_pool():
                     "title": r["summary_title"],
                     "creator": r["summary_creator"],
                     "category": r["summary_category"],
+                    "is_private": r["is_private"],
+                    "updated_at": r["updated_at"],
                 }
                 for r in sliced
             ]
