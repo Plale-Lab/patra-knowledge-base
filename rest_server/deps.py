@@ -16,7 +16,6 @@ TAPIS_TOKEN_HEADER = "X-Tapis-Token"
 ASSET_INGEST_ORG_HEADER = "X-Asset-Org"
 ASSET_INGEST_KEY_HEADER = "X-Asset-Api-Key"
 PATRA_USERNAME_HEADER = "X-Patra-Username"
-PATRA_ROLE_HEADER = "X-Patra-Role"
 
 
 @dataclass(frozen=True)
@@ -64,13 +63,12 @@ def get_admin_users() -> set[str]:
 def get_request_actor(request: Request) -> PatraActor:
     username = (request.headers.get(PATRA_USERNAME_HEADER) or "").strip()
     token = (request.headers.get(TAPIS_TOKEN_HEADER) or "").strip()
-    requested_role = (request.headers.get(PATRA_ROLE_HEADER) or "").strip().lower()
 
     if not token:
         return PatraActor(username=username or None)
 
     normalized_username = username.lower() if username else None
-    is_admin = requested_role == "admin" or (normalized_username in get_admin_users() if normalized_username else False)
+    is_admin = normalized_username in get_admin_users() if normalized_username else False
     return PatraActor(
         username=username or None,
         role="admin" if is_admin else "user",

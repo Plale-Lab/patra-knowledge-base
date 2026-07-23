@@ -374,9 +374,16 @@ def _make_mock_pool():
             return _DS_IDENT_BY_UUID.get(str(args[0]))
         return None
 
+    async def _execute(query: str, *args):
+        if "DELETE FROM datasheets WHERE uuid = $1" in query and args:
+            ident = _DS_IDENT_BY_UUID.get(str(args[0]))
+            return "DELETE 1" if ident is not None else "DELETE 0"
+        return "OK"
+
     conn.fetch = _fetch
     conn.fetchrow = _fetchrow
     conn.fetchval = _fetchval
+    conn.execute = _execute
 
     @asynccontextmanager
     async def _acquire():

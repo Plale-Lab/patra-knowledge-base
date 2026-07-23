@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, Query
 import asyncpg
 
 from rest_server.database import get_pool
-from rest_server.deps import get_include_private, require_authenticated_actor, PatraActor
-from rest_server.errors import asset_not_available_or_visible
+from rest_server.deps import get_include_private, require_admin_actor, require_authenticated_actor, PatraActor
+from rest_server.errors import asset_not_available_or_visible, not_found
 from rest_server.models import (
     DatasheetAlternateIdentifier,
     DatasheetContributor,
@@ -539,3 +539,16 @@ async def update_datasheet(
                 )
 
     return await get_datasheet(uuid=uuid, pool=pool, include_private=include_private)
+
+
+@router.delete("/datasheet/{uuid}", status_code=204)
+async def delete_datasheet(
+    uuid: UUID,
+    pool: asyncpg.Pool = Depends(get_pool),
+    actor: PatraActor = Depends(require_admin_actor),
+):
+    """Delete a datasheet (admin only). Child rows cascade; linked model_cards.training_datasheet_id is set NULL."""
+    async with pool.acquire() as conn:
+        result = await conn.execute("DELETE FROM datasheets WHERE uuid = $1", uuid)
+    if result == "DELETE 0":
+        raise not_found("Datasheet")
