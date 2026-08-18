@@ -9,7 +9,7 @@
 
 </div>
 
-The Patra Knowledge Base is a system designed to manage and track AI/ML models, with the objective of making them more accountable and trustworthy. It's a key part of the Patra ModelCards framework, which aims to improve transparency and accountability in AI/ML models throughout their entire lifecycle. This includes the model's initial training phase, subsequent deployments, and ongoing usage, whether by the same or different individuals.
+The Patra Knowledge Base is a system designed for managing AI model cards, datasheets, and agent cards throughout the life of the objects that they describe (AI/ML models, datasets, AI agents).  The Patra Knowledge Base is the backend engine of the Patra ModelCards framework. It is currently deployed in the ICICLE infrastructure to raise the accountability of AI research carried out on ICICLE platforms.
 
 **Tags:** CI4AI, PADI
 
@@ -17,7 +17,7 @@ For guidance on what How-To Guides and Explanation content covers, see [Diátaxi
 
 ### License
 
-The **Patra Knowledge Base** is copyrighted by **Plale Lab at The University of Oregon** and distributed under the **BSD 3-Clause License**. See the `LICENSE` file for more details.
+The **Patra Knowledge Base** copyright is held by **Plale Lab at The University of Oregon** and distributed under the **BSD 3-Clause License**. See the `LICENSE` file for more details.
 
 ## References
 
