@@ -8,10 +8,6 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, sta
 from rest_server.database import get_pool
 from rest_server.deps import AssetIngestPrincipal, get_request_actor, require_asset_ingest_principal
 from rest_server.asset_create_models import (
-    AssetBulkDatasheetCreate,
-    AssetBulkIngestResult,
-    AssetBulkItemResult,
-    AssetBulkModelCardCreate,
     AssetDatasheetCreate,
     AssetIngestResult,
     AssetModelCardCreate,
@@ -524,90 +520,6 @@ async def create_datasheet_asset(
             detail=f"Datasheet already exists with id {result.asset_id}",
         )
     return result
-
-
-@router.post("/model-cards/bulk", response_model=AssetBulkIngestResult)
-async def bulk_create_model_card_assets(
-    payload: AssetBulkModelCardCreate,
-    principal: AssetIngestPrincipal = Depends(require_asset_ingest_principal),
-    pool: asyncpg.Pool = Depends(get_pool),
-):
-    results: list[AssetBulkItemResult] = []
-    async with pool.acquire() as conn:
-        for index, asset in enumerate(payload.assets):
-            try:
-                async with conn.transaction():
-                    result = await _create_model_card_in_tx(conn, asset, principal.organization)
-                results.append(
-                    AssetBulkItemResult(
-                        index=index,
-                        asset_type="model_card",
-                        created=result.created,
-                        duplicate=result.duplicate,
-                        asset_id=result.asset_id,
-                    )
-                )
-            except Exception as exc:
-                log.exception("Bulk model card ingest failed at index %s", index)
-                results.append(
-                    AssetBulkItemResult(
-                        index=index,
-                        asset_type="model_card",
-                        created=False,
-                        error=str(exc),
-                    )
-                )
-    return AssetBulkIngestResult(
-        asset_type="model_card",
-        organization=principal.organization,
-        total=len(results),
-        created=sum(1 for item in results if item.created),
-        duplicates=sum(1 for item in results if item.duplicate),
-        failed=sum(1 for item in results if item.error is not None),
-        results=results,
-    )
-
-
-@router.post("/datasheets/bulk", response_model=AssetBulkIngestResult)
-async def bulk_create_datasheet_assets(
-    payload: AssetBulkDatasheetCreate,
-    principal: AssetIngestPrincipal = Depends(require_asset_ingest_principal),
-    pool: asyncpg.Pool = Depends(get_pool),
-):
-    results: list[AssetBulkItemResult] = []
-    async with pool.acquire() as conn:
-        for index, asset in enumerate(payload.assets):
-            try:
-                async with conn.transaction():
-                    result = await _create_datasheet_in_tx(conn, asset, principal.organization)
-                results.append(
-                    AssetBulkItemResult(
-                        index=index,
-                        asset_type="datasheet",
-                        created=result.created,
-                        duplicate=result.duplicate,
-                        asset_id=result.asset_id,
-                    )
-                )
-            except Exception as exc:
-                log.exception("Bulk datasheet ingest failed at index %s", index)
-                results.append(
-                    AssetBulkItemResult(
-                        index=index,
-                        asset_type="datasheet",
-                        created=False,
-                        error=str(exc),
-                    )
-                )
-    return AssetBulkIngestResult(
-        asset_type="datasheet",
-        organization=principal.organization,
-        total=len(results),
-        created=sum(1 for item in results if item.created),
-        duplicates=sum(1 for item in results if item.duplicate),
-        failed=sum(1 for item in results if item.error is not None),
-        results=results,
-    )
 
 
 async def _fetch_model_card_snapshot(conn: asyncpg.Connection, asset_id: int) -> dict | None:

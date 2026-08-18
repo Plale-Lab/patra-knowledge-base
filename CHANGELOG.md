@@ -12,6 +12,14 @@
   shared `client` fixture. Added `pytest-cov` + `.coveragerc` (`source = rest_server, shared`);
   CI now reports coverage on every run.
 
+### Removed
+- The bulk asset-ingest endpoints, `POST /v1/assets/model-cards/bulk` and
+  `POST /v1/assets/datasheets/bulk`. Nothing in `patra-frontend` called them (only
+  external API-key partner consumers could have), and the underlying create logic
+  (`_create_model_card_in_tx`/`_create_datasheet_in_tx`) is unaffected — the single-record
+  `POST /v1/assets/model-cards` and `POST /v1/assets/datasheets` endpoints are unchanged.
+  The `PATCH` update endpoints are untouched by this change.
+
 ### Known issues found by the new tests (not fixed — flagged for the maintainer)
 - `rest_server/features/ask_patra/service.py`: `_is_greeting()` lists `"hello!"` and `"hey!"` in
   its target set of exact greeting matches, but never actually matches them. The function only

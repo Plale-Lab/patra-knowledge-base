@@ -104,8 +104,6 @@ External systems and partner organizations publish and manage model cards and da
 |------------------------------------|--------|--------------------------------------------------------------|
 | `/v1/assets/model-cards`           | POST   | Create a model card.                                          |
 | `/v1/assets/datasheets`            | POST   | Create a datasheet.                                            |
-| `/v1/assets/model-cards/bulk`      | POST   | Create up to 25 model cards in one request.                    |
-| `/v1/assets/datasheets/bulk`       | POST   | Create up to 25 datasheets in one request.                     |
 | `/v1/assets/model-cards/{asset_id}`| PATCH  | Update an existing model card.                                 |
 | `/v1/assets/datasheets/{asset_id}` | PATCH  | Update an existing datasheet.                                  |
 | `/v1/assets/records`               | GET    | List/search model cards and datasheets available for editing.  |
@@ -157,21 +155,6 @@ curl -X POST "$PATRA_URL/v1/assets/datasheets" \
   }'
 ```
 Returns `201 Created` with `{"asset_type": "datasheet", "asset_id": <int>, ...}`, or `409 Conflict` on a duplicate.
-
-**Bulk create model cards** (up to 25 per request; each item is validated and inserted independently, so partial success is possible):
-```bash
-curl -X POST "$PATRA_URL/v1/assets/model-cards/bulk" \
-  -H "X-Asset-Org: $ASSET_ORG" \
-  -H "X-Asset-Api-Key: $ASSET_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "assets": [
-      {"name": "Model One", "version": "1.0"},
-      {"name": "Model Two", "version": "2.0"}
-    ]
-  }'
-```
-Returns `200 OK` with `{"total", "created", "duplicates", "failed", "results": [...]}`, one result entry per input item (with an `error` message for any that failed). `POST /v1/assets/datasheets/bulk` takes the same shape with `"assets"` as a list of datasheet payloads.
 
 **Update a model card or datasheet** (`PATCH`, full replacement of the asset's editable fields — send the complete payload, not a partial diff):
 ```bash
@@ -290,6 +273,41 @@ Key features and capabilities of the Patra ModelCards Framework include:
 By combining these capabilities, the Patra Knowledge Base provides a robust foundation for **trustworthy and accountable AI/ML model management within the edge-cloud continuum**. This framework addresses crucial aspects of transparency, provenance tracking, and performance monitoring, ultimately contributing to more responsible and reliable AI deployments.
 
 For more information, please refer to the [Patra ModelCards paper](https://ieeexplore.ieee.org/document/10678710).
+
+### Hosted Deployments (Tapis Pods)
+
+Patra runs as [Tapis Pods](https://tapis.readthedocs.io/en/latest/technical/pods.html) in the
+ICICLE tenant. Use these endpoints instead of a local stack when you just need to read or
+submit records:
+
+| Service | URL | Notes |
+| ------- | --- | ----- |
+| Patra UI | `https://patra.pods.icicleai.tapis.io` | Public web interface |
+| REST API (stable) | `https://patrabackend.pods.icicleai.tapis.io` | Use this as `patra_server_url` / `PATRA_URL` |
+| REST API (dev) | `https://patrabackend-dev.pods.icicleai.tapis.io` | Dev-only routes enabled; not for integrations |
+| MCP server | `https://patramcp.pods.icicleai.tapis.io` | Legacy/archived — see the Status Notice above |
+| Tapis tenant | `https://icicleai.tapis.io` | OAuth2 token endpoint at `/v3/oauth2/tokens` |
+
+Quick check against the stable deployment:
+
+```bash
+export PATRA_URL=https://patrabackend.pods.icicleai.tapis.io
+curl -s "$PATRA_URL/" | head
+curl -s "$PATRA_URL/modelcards" | head
+```
+
+Reads of public records are unauthenticated. Private records and all write operations require
+either an `X-Tapis-Token` or an org/API-key pair (see the Asset Ingest API section). Obtain a
+Tapis token with your TACC credentials:
+
+```bash
+curl -X POST https://icicleai.tapis.io/v3/oauth2/tokens \
+  -H "Content-Type: application/json" \
+  -d '{"username": "<tacc-username>", "password": "<tacc-password>", "grant_type": "password"}'
+```
+
+The stable and dev backends share one PostgreSQL database, so treat writes against the dev pod
+as writes against production data.
 
 ### Patra Servers
 

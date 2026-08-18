@@ -237,18 +237,6 @@ class AssetDatasheetCreate(BaseModel):
     funding_references: list[AssetDatasheetFundingReferenceCreate] = Field(default_factory=list)
 
 
-class AssetBulkModelCardCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    assets: list[AssetModelCardCreate] = Field(min_length=1, max_length=25)
-
-
-class AssetBulkDatasheetCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    assets: list[AssetDatasheetCreate] = Field(min_length=1, max_length=25)
-
-
 class AssetIngestResult(BaseModel):
     asset_type: str
     asset_id: int
@@ -263,22 +251,3 @@ class AssetUpdateResult(BaseModel):
     asset_id: int
     organization: str
     updated: bool = True
-
-
-class AssetBulkItemResult(BaseModel):
-    index: int
-    asset_type: str
-    created: bool
-    duplicate: bool = False
-    asset_id: int | None = None
-    error: str | None = None
-
-
-class AssetBulkIngestResult(BaseModel):
-    asset_type: str
-    organization: str
-    total: int
-    created: int
-    duplicates: int
-    failed: int
-    results: list[AssetBulkItemResult]

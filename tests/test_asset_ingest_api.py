@@ -300,24 +300,3 @@ def test_create_datasheet_asset_duplicate_returns_409(asset_client):
     )
     assert response.status_code == 409
     assert "42" in response.json()["detail"]
-
-
-def test_bulk_model_card_ingest_returns_mixed_results(asset_client):
-    client, conn = asset_client
-    conn.model_card_duplicate_queue = [7]
-    response = client.post(
-        "/v1/assets/model-cards/bulk",
-        headers=_asset_headers(),
-        json={
-            "assets": [
-                {"name": "Duplicate Model", "version": "1.0"},
-                {"name": "Fresh Model", "version": "2.0"},
-            ]
-        },
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["total"] == 2
-    assert data["duplicates"] == 1
-    assert data["created"] == 1
-    assert data["failed"] == 0
