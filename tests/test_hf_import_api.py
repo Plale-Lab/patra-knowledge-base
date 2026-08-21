@@ -34,7 +34,7 @@ def hf_import_app(monkeypatch):
 
 
 def test_hf_import_model_card_success(hf_import_app, monkeypatch, tapis_headers):
-    async def fake_import(url, asset_type):
+    async def fake_import(url, asset_type, request_tapis_token=None):
         assert url == "https://huggingface.co/distilbert/distilbert-base-uncased"
         assert asset_type == "model_card"
         return {
@@ -69,7 +69,7 @@ def test_hf_import_model_card_success(hf_import_app, monkeypatch, tapis_headers)
 
 
 def test_hf_import_datasheet_success(hf_import_app, monkeypatch, tapis_headers):
-    async def fake_import(url, asset_type):
+    async def fake_import(url, asset_type, request_tapis_token=None):
         assert asset_type == "datasheet"
         return {
             "title": "Squad",
@@ -99,7 +99,7 @@ def test_hf_import_datasheet_success(hf_import_app, monkeypatch, tapis_headers):
 def test_hf_import_repo_not_found(hf_import_app, monkeypatch, tapis_headers):
     from rest_server.features.hf_import.service import HuggingFaceRepoNotFoundError
 
-    async def fake_import(url, asset_type):
+    async def fake_import(url, asset_type, request_tapis_token=None):
         raise HuggingFaceRepoNotFoundError("repo not found on Hugging Face")
 
     monkeypatch.setattr("rest_server.routes.hf_import.import_from_huggingface", fake_import)
@@ -117,7 +117,7 @@ def test_hf_import_repo_not_found(hf_import_app, monkeypatch, tapis_headers):
 def test_hf_import_gated_repo_fails_clearly(hf_import_app, monkeypatch, tapis_headers):
     from rest_server.features.hf_import.service import HuggingFaceGatedOrPrivateError
 
-    async def fake_import(url, asset_type):
+    async def fake_import(url, asset_type, request_tapis_token=None):
         raise HuggingFaceGatedOrPrivateError("This Hugging Face repo is gated.")
 
     monkeypatch.setattr("rest_server.routes.hf_import.import_from_huggingface", fake_import)
@@ -136,7 +136,7 @@ def test_hf_import_gated_repo_fails_clearly(hf_import_app, monkeypatch, tapis_he
 def test_hf_import_upstream_error(hf_import_app, monkeypatch, tapis_headers):
     from rest_server.features.hf_import.service import HuggingFaceUpstreamError
 
-    async def fake_import(url, asset_type):
+    async def fake_import(url, asset_type, request_tapis_token=None):
         raise HuggingFaceUpstreamError("Hugging Face metadata lookup failed: timed out")
 
     monkeypatch.setattr("rest_server.routes.hf_import.import_from_huggingface", fake_import)

@@ -130,15 +130,28 @@ def _llm_enabled() -> bool:
     return bool(api_base) and os.getenv("HF_IMPORT_LLM_ENABLED", "true").strip().lower() == "true"
 
 
-def _resolve_llm_auth(api_base: str) -> tuple[str | None, dict[str, str]]:
+def _resolve_llm_auth(api_base: str, request_tapis_token: str | None) -> tuple[str | None, dict[str, str]]:
+    # Mirrors rest_server/features/ask_patra/service.py's _resolve_llm_auth:
+    # prefer a pod-level service token if one is ever configured, otherwise
+    # fall back to the calling user's own Tapis token (hf-import is only
+    # reachable by logged-in users via require_asset_ingest_principal, and
+    # the frontend already forwards X-Tapis-Token on every request).
     service_tapis_token = os.getenv("HF_IMPORT_TAPIS_TOKEN", "").strip()
     if "litellm.pods.tacc.tapis.io" in api_base.lower() and service_tapis_token:
         return None, {"X-Tapis-Token": service_tapis_token}
+    if "litellm.pods.tacc.tapis.io" in api_base.lower() and (request_tapis_token or "").strip():
+        return None, {"X-Tapis-Token": request_tapis_token.strip()}
     api_key = os.getenv("HF_IMPORT_LLM_API_KEY", "").strip() or None
     return api_key, {}
 
 
-def _call_llm(messages: list[dict[str, str]], *, max_tokens: int = 400, temperature: float = 0.2) -> str | None:
+def _call_llm(
+    messages: list[dict[str, str]],
+    *,
+    request_tapis_token: str | None = None,
+    max_tokens: int = 400,
+    temperature: float = 0.2,
+) -> str | None:
     """Returns raw text, or None if the LLM is disabled/unreachable/erroring.
 
     Never raises. Every caller treats None as "leave the field(s) null" --
@@ -147,7 +160,7 @@ def _call_llm(messages: list[dict[str, str]], *, max_tokens: int = 400, temperat
     if not _llm_enabled():
         return None
     api_base = os.getenv("HF_IMPORT_LLM_API_BASE", "").strip()
-    api_key, extra_headers = _resolve_llm_auth(api_base)
+    api_key, extra_headers = _resolve_llm_auth(api_base, request_tapis_token)
     model = os.getenv("HF_IMPORT_LLM_MODEL", "").strip() or None
     timeout_seconds = int(os.getenv("HF_IMPORT_LLM_TIMEOUT_SECONDS", "60") or "60")
     try:
@@ -279,6 +292,7 @@ def classify_missing_lookup_fields(
     library_name: str | None,
     readme_text: str | None,
     missing: dict[str, bool],
+    request_tapis_token: str | None = None,
 ) -> dict[str, str]:
     """`missing` = {"category": bool, "input_type": bool, "model_type": bool} --
     only fields marked True are asked for. Returns {} if the LLM is disabled,
@@ -297,7 +311,12 @@ def classify_missing_lookup_fields(
         input_type_list=", ".join(sorted(VALID_INPUT_TYPES)),
         model_type_list=", ".join(sorted(VALID_MODEL_TYPES)),
     )
-    raw = _call_llm([{"role": "user", "content": prompt}], max_tokens=300, temperature=0.0)
+    raw = _call_llm(
+        [{"role": "user", "content": prompt}],
+        request_tapis_token=request_tapis_token,
+        max_tokens=300,
+        temperature=0.0,
+    )
     parsed = _parse_json_object(raw)
 
     result: dict[str, str] = {}
@@ -367,6 +386,7 @@ def reason_missing_hybrid_fields(
     pipeline_tag: str | None,
     readme_text: str | None,
     missing: dict[str, bool],
+    request_tapis_token: str | None = None,
 ) -> dict[str, str]:
     """`missing` = {"foundational_model": bool, "input_data": bool}.
 
@@ -387,6 +407,7 @@ def reason_missing_hybrid_fields(
         [{"role": "user", "content": _ANALYSIS_PROMPT.format(
             name=name, pipeline_tag=pipeline_tag or "(none)", readme_excerpt=readme_excerpt,
         )}],
+        request_tapis_token=request_tapis_token,
         max_tokens=300,
     )
     if analysis is None:
@@ -396,6 +417,7 @@ def reason_missing_hybrid_fields(
         [{"role": "user", "content": _GENERATE_PROMPT.format(
             analysis=analysis, fields_json=json.dumps({field: None for field in fields_to_ask}),
         )}],
+        request_tapis_token=request_tapis_token,
         max_tokens=300,
     )
     generated = {
@@ -410,6 +432,7 @@ def reason_missing_hybrid_fields(
         [{"role": "user", "content": _VERIFY_PROMPT.format(
             name=name, pipeline_tag=pipeline_tag or "(none)", generated_json=json.dumps(generated),
         )}],
+        request_tapis_token=request_tapis_token,
         max_tokens=300,
         temperature=0.0,
     )

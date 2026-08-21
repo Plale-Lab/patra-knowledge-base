@@ -381,7 +381,9 @@ def _subjects_from_tags(tags: list[str] | None) -> str | None:
     return ", ".join(deduped) if deduped else None
 
 
-def _map_model_fields(repo_id: str, payload: dict, readme_text: str | None) -> HFImportFields:
+def _map_model_fields(
+    repo_id: str, payload: dict, readme_text: str | None, request_tapis_token: str | None = None
+) -> HFImportFields:
     card_data = payload.get("cardData") or {}
     tags = payload.get("tags") or []
     config = payload.get("config") or {}
@@ -410,6 +412,7 @@ def _map_model_fields(repo_id: str, payload: dict, readme_text: str | None) -> H
             "input_type": input_type is None,
             "model_type": model_type is None,
         },
+        request_tapis_token=request_tapis_token,
     )
     category = category or classified.get("category")
     input_type = input_type or classified.get("input_type")
@@ -424,6 +427,7 @@ def _map_model_fields(repo_id: str, payload: dict, readme_text: str | None) -> H
             "foundational_model": foundational_model is None,
             "input_data": input_data is None,
         },
+        request_tapis_token=request_tapis_token,
     )
     foundational_model = foundational_model or reasoned.get("foundational_model")
     input_data = input_data or reasoned.get("input_data")
@@ -489,7 +493,9 @@ def _map_dataset_fields(repo_id: str, payload: dict, readme_text: str | None) ->
 # Orchestrator — the only function the route layer calls.
 # --------------------------------------------------------------------------
 
-async def import_from_huggingface(url: str, asset_type: str) -> HFImportFields:
+async def import_from_huggingface(
+    url: str, asset_type: str, request_tapis_token: str | None = None
+) -> HFImportFields:
     is_dataset = asset_type == "datasheet"
     repo_id = _parse_hf_repo_id(url, expect_dataset=is_dataset)
 
@@ -502,4 +508,4 @@ async def import_from_huggingface(url: str, asset_type: str) -> HFImportFields:
     # route through to_thread so those calls don't block the event loop.
     if is_dataset:
         return await asyncio.to_thread(_map_dataset_fields, repo_id, payload, readme_text)
-    return await asyncio.to_thread(_map_model_fields, repo_id, payload, readme_text)
+    return await asyncio.to_thread(_map_model_fields, repo_id, payload, readme_text, request_tapis_token)
