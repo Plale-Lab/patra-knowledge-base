@@ -39,6 +39,12 @@ class HFImportFields(BaseModel):
     short_description: str | None = None
     full_description: str | None = None
     is_gated: bool | None = None
+    category: str | None = None
+    input_type: str | None = None
+    model_type: str | None = None
+    foundational_model: str | None = None
+    input_data: str | None = None
+    citation: str | None = None
 
     # ---- datasheet (dsForm) fields ----
     title: str | None = None
@@ -46,6 +52,9 @@ class HFImportFields(BaseModel):
     download_url: str | None = None
     description: str | None = None
     subjects: str | None = None
+    publisher: str | None = None
+    publication_year: int | None = None
+    license_uri: str | None = None
 
     # ---- shared ----
     license: str | None = None
