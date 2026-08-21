@@ -1,11 +1,16 @@
 """Fetch-and-normalize logic for importing a public Hugging Face model or
 dataset repo into flat Patra model-card/datasheet form fields.
 
-Mirrors the stdlib urllib + @lru_cache pattern already used in
-rest_server/routes/model_cards.py's `_fetch_huggingface_model_metadata`
-(no httpx here — httpx is used synchronously elsewhere, e.g.
-rest_server/features/shared/openai_compat.py, but the existing HF
-integration uses urllib and we keep that convention for consistency).
+HF metadata/README fetch mirrors the stdlib urllib + @lru_cache pattern
+already used in rest_server/routes/model_cards.py's
+`_fetch_huggingface_model_metadata` (no httpx for those calls -- the
+existing HF integration uses urllib and we keep that convention for
+consistency). Field enrichment beyond Tier-1 deterministic extraction
+(category/input_type/model_type classification, foundational_model/
+input_data reasoning) goes through `llm_enrichment.py`, which does use
+httpx via `rest_server/features/shared/openai_compat.py` -- see that
+module's docstring for the two-tier (M1 classifier + M3 chain-of-thought)
+design this ports from the research POC.
 
 Public repos only: there is no HF_HUB_TOKEN support anywhere in this repo,
 so gated/private repos fail loudly (HuggingFaceGatedOrPrivateError) instead
@@ -23,6 +28,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+from rest_server.features.hf_import import llm_enrichment
 from rest_server.features.hf_import.models import HFImportFields
 
 log = logging.getLogger(__name__)
@@ -314,6 +320,25 @@ def _license_value(card_data: dict, tags: list) -> str | None:
     return _first_present(raw, _license_from_tags(tags))
 
 
+_LICENSE_URI_MAP = {
+    "mit": "https://opensource.org/licenses/MIT",
+    "apache-2.0": "https://www.apache.org/licenses/LICENSE-2.0",
+    "cc0-1.0": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "cc-by-4.0": "https://creativecommons.org/licenses/by/4.0/",
+    "cc-by-sa-4.0": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "cc-by-nc-4.0": "https://creativecommons.org/licenses/by-nc/4.0/",
+    "cc-by-nc-sa-4.0": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "bsd-3-clause": "https://opensource.org/licenses/BSD-3-Clause",
+    "gpl-3.0": "https://www.gnu.org/licenses/gpl-3.0.html",
+}
+
+
+def _license_uri_value(license_value: str | None) -> str | None:
+    if not license_value:
+        return None
+    return _LICENSE_URI_MAP.get(license_value.strip().lower())
+
+
 def _keywords_from_tags(tags: list[str] | None) -> str | None:
     """Model tags: most are plain (pytorch, text-generation, en); drop the
     handful of colon-namespaced metadata tags (license:, region:, arxiv:...)
@@ -359,14 +384,55 @@ def _subjects_from_tags(tags: list[str] | None) -> str | None:
 def _map_model_fields(repo_id: str, payload: dict, readme_text: str | None) -> HFImportFields:
     card_data = payload.get("cardData") or {}
     tags = payload.get("tags") or []
+    config = payload.get("config") or {}
+    pipeline_tag = payload.get("pipeline_tag")
+    library_name = payload.get("library_name")
     short_desc, full_desc = _derive_descriptions(readme_text)
     hf_url = f"https://huggingface.co/{payload.get('id') or repo_id}"
+    name = _humanize_repo_name(repo_id)
+
+    # Tier 1: deterministic.
+    category = llm_enrichment.derive_category(pipeline_tag)
+    input_type = llm_enrichment.derive_input_type(pipeline_tag)
+    model_type = llm_enrichment.derive_model_type(config, name)
+    foundational_model = llm_enrichment.derive_foundational_model(tags)
+    input_data = llm_enrichment.derive_input_data(tags)
+    citation = llm_enrichment.derive_citation(readme_text)
+
+    # M1-style: narrow classifier fallback, only for what Tier 1 missed.
+    classified = llm_enrichment.classify_missing_lookup_fields(
+        name=name,
+        pipeline_tag=pipeline_tag,
+        library_name=library_name,
+        readme_text=readme_text,
+        missing={
+            "category": category is None,
+            "input_type": input_type is None,
+            "model_type": model_type is None,
+        },
+    )
+    category = category or classified.get("category")
+    input_type = input_type or classified.get("input_type")
+    model_type = model_type or classified.get("model_type")
+
+    # M3-style: chain-of-thought, only for what's still null.
+    reasoned = llm_enrichment.reason_missing_hybrid_fields(
+        name=name,
+        pipeline_tag=pipeline_tag,
+        readme_text=readme_text,
+        missing={
+            "foundational_model": foundational_model is None,
+            "input_data": input_data is None,
+        },
+    )
+    foundational_model = foundational_model or reasoned.get("foundational_model")
+    input_data = input_data or reasoned.get("input_data")
 
     return HFImportFields(
-        name=_humanize_repo_name(repo_id),
+        name=name,
         author=_first_present(payload.get("author"), repo_id.split("/", 1)[0]),
         license=_license_value(card_data, tags),
-        framework=_first_present(payload.get("library_name"), _framework_from_tags(tags)),
+        framework=_first_present(library_name, _framework_from_tags(tags)),
         keywords=_keywords_from_tags(tags),
         documentation=hf_url,
         location=hf_url,
@@ -375,6 +441,12 @@ def _map_model_fields(repo_id: str, payload: dict, readme_text: str | None) -> H
         # Always False here: _enforce_not_gated() already raised above if the
         # HF API reported this repo as gated.
         is_gated=False,
+        category=category,
+        input_type=input_type,
+        model_type=model_type,
+        foundational_model=foundational_model,
+        input_data=input_data,
+        citation=citation,
     )
 
 
@@ -384,13 +456,32 @@ def _map_dataset_fields(repo_id: str, payload: dict, readme_text: str | None) ->
     _, full_desc = _derive_descriptions(readme_text)  # dsForm has one `description` field; use the fuller text
     hf_url = f"https://huggingface.co/datasets/{payload.get('id') or repo_id}"
 
+    license_value = _license_value(card_data, tags)
+    creator = _first_present(payload.get("author"), repo_id.split("/", 1)[0])
+
+    # Tier 1 only -- publisher/publication_year/license_uri are all cheaply
+    # deterministic here, so there's nothing for an LLM to add. No lookup
+    # table can invent a publisher HF doesn't state, so it defaults to the
+    # same org/user as the creator, which is who published it in practice
+    # for the overwhelming majority of HF dataset repos.
+    publication_year = None
+    created_at = payload.get("createdAt") or ""
+    if len(created_at) >= 4:
+        try:
+            publication_year = int(created_at[:4])
+        except ValueError:
+            publication_year = None
+
     return HFImportFields(
         title=_humanize_repo_name(repo_id),
-        creator=_first_present(payload.get("author"), repo_id.split("/", 1)[0]),
-        license=_license_value(card_data, tags),
+        creator=creator,
+        license=license_value,
         download_url=hf_url,
         description=full_desc,
         subjects=_subjects_from_tags(tags),
+        publisher=creator,
+        publication_year=publication_year,
+        license_uri=_license_uri_value(license_value),
     )
 
 
@@ -406,6 +497,9 @@ async def import_from_huggingface(url: str, asset_type: str) -> HFImportFields:
     _enforce_not_gated(payload)
     readme_text = await asyncio.to_thread(_fetch_hf_readme, repo_id, is_dataset)
 
+    # _map_model_fields/_map_dataset_fields now make blocking LLM calls
+    # (via llm_enrichment) on top of the pure-regex work they used to do --
+    # route through to_thread so those calls don't block the event loop.
     if is_dataset:
-        return _map_dataset_fields(repo_id, payload, readme_text)
-    return _map_model_fields(repo_id, payload, readme_text)
+        return await asyncio.to_thread(_map_dataset_fields, repo_id, payload, readme_text)
+    return await asyncio.to_thread(_map_model_fields, repo_id, payload, readme_text)
