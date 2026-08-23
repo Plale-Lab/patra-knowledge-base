@@ -9,7 +9,7 @@
 
 </div>
 
-The Patra Knowledge Base is a system designed for managing AI model cards, datasheets, and agent cards throughout the life of the objects that they describe (AI/ML models, datasets, AI agents).  The Patra Knowledge Base is the backend engine of the Patra ModelCards framework. It is currently deployed in the ICICLE infrastructure to raise the accountability of AI research carried out on ICICLE platforms.
+The Patra Knowledge Base is a system designed for managing AI model cards, datasheets, and agent cards throughout the life of the objects that they describe (AI/ML models, datasets, AI agents).  The Patra Knowledge Base is the backend engine of the Patra AI Cards framework. It is currently deployed in the ICICLE infrastructure to raise the accountability of AI research carried out on ICICLE platforms.
 
 **Tags:** CI4AI, PADI
 
@@ -256,7 +256,7 @@ For all new development, deployment, integration, and operational work, use the 
 
 At the heart of the Patra Knowledge Base is the concept of Model Cards. These cards are essentially detailed records that provide essential information about each AI/ML model. This information includes technical details like the model's accuracy and latency, but it goes beyond that to include non-technical aspects such as fairness, explainability, and the model's behavior in various deployment environments. This holistic approach is intended to create a comprehensive understanding of the model's strengths and weaknesses, enabling more informed decisions about its use and deployment
 
-Key features and capabilities of the Patra ModelCards Framework include:
+Key features and capabilities of the Patra AI Cards Framework include:
 
 - **Semi-automated information capture:** Patra reduces the burden of manual documentation by automatically capturing information about model fairness, explainability, and performance in different deployment environments. This automation is facilitated by the [Model Card Toolkit](https://github.com/Plale-Lab/patra-toolkit)  , which invokes analysis tools and integrates the results directly into the Model Cards.
   
