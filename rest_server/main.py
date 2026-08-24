@@ -9,12 +9,14 @@ import asyncpg
 from rest_server import __version__
 from rest_server.database import close_pool, get_pool, init_pool
 from rest_server.errors import database_unavailable
+from rest_server.features.weekly_report.service import run_scheduler_loop as run_weekly_report_loop
 from rest_server.routes import agent_tools, ask_patra, assets, datasheets, experiments, hf_import, model_cards, users
 from shared.config import (
     get_db_startup_timeout_seconds,
     is_ask_patra_enabled,
     is_domain_experiments_enabled,
     is_hf_import_enabled,
+    is_weekly_report_enabled,
 )
 
 log = logging.getLogger(__name__)
@@ -29,8 +31,23 @@ async def lifespan(app: FastAPI):
         pool = await asyncio.wait_for(init_pool(), timeout=db_startup_timeout)
     except Exception:
         log.exception("Database initialization failed within startup timeout; starting in degraded mode")
+
+    weekly_report_task: asyncio.Task | None = None
+    if is_weekly_report_enabled():
+        weekly_report_task = asyncio.create_task(run_weekly_report_loop())
+        log.info("Weekly report scheduler enabled")
+    else:
+        log.info("Weekly report scheduler disabled")
+
     yield
+
     log.info("Stopping Patra FastAPI backend")
+    if weekly_report_task is not None:
+        weekly_report_task.cancel()
+        try:
+            await weekly_report_task
+        except asyncio.CancelledError:
+            pass
     await close_pool()
 
 
