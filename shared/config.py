@@ -47,6 +47,22 @@ def is_hf_import_enabled() -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Weekly service reporting (external webhook)
+# ---------------------------------------------------------------------------
+
+def is_weekly_report_enabled() -> bool:
+    return _env_flag("ENABLE_WEEKLY_REPORT", default=False)
+
+
+def get_weekly_report_webhook_url() -> str | None:
+    return os.getenv("WEEKLY_REPORT_WEBHOOK_URL")
+
+
+def get_weekly_report_webhook_token() -> str | None:
+    return os.getenv("WEEKLY_REPORT_WEBHOOK_TOKEN")
+
+
+# ---------------------------------------------------------------------------
 # Auth / admin
 # ---------------------------------------------------------------------------
 

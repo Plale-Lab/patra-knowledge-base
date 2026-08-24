@@ -9,5 +9,6 @@ Current modules:
 - `agent_toolkit`: schema-search-oriented AI tooling docs and support files
 - `resource_records`: record editing/search domain docs
 - `shared`: reusable OpenAI-compatible provider helpers
+- `weekly_report`: periodic (weekly) reporting of aggregate model-card/datasheet counts to an external webhook (Carlos's services-reporting board)
 
 HTTP entrypoints still live under `rest_server/routes/` and import from these feature modules.
