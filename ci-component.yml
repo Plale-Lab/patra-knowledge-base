@@ -1,7 +1,7 @@
-- id: PatraKnowledgeBase:1.0.0
+- id: PatraAICardsKnowledgeBase:1.0.0
   owner: Beth Plale
   primaryThrust: core/AI4CI
-  name: Patra Knowledge Base
+  name: Patra AI Cards Knowledge Base
   status: ProductionRelease
   description: Knowledge Graph to capture AI/ML model lifecycle from creation through deployments.
   componentVersion: 1.0.0
