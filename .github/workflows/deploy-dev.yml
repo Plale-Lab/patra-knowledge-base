@@ -1,0 +1,33 @@
+name: Deploy to dev
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # scripts/build-push-restart-common.sh expects tapipy at this exact path.
+      - name: Set up tapipy venv
+        run: python3 -m venv ~/.venvs/tapis && ~/.venvs/tapis/bin/pip install --upgrade pip tapipy
+
+      # Deliberately NOT build-push-backend.sh -- its hardcoded restart list
+      # includes the prod pods (patra, patrabackend). Call the generic
+      # wrapper directly, scoped to dev only.
+      - name: Build, push, and restart patrabackend-dev
+        env:
+          TAPIS_PODS_BASE_URL: ${{ secrets.TAPIS_PODS_BASE_URL }}
+          TAPIS_USERNAME: ${{ secrets.TAPIS_USERNAME }}
+          TAPIS_PASSWORD: ${{ secrets.TAPIS_PASSWORD }}
+          IMAGE: plalelab/patra-backend:latest
+          DOCKERFILE: rest_server/Dockerfile
+          PODS: patrabackend-dev
+        run: bash scripts/build-push-restart-common.sh
