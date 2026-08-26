@@ -283,6 +283,17 @@ class UserRegistration(BaseModel):
     username: str
 
 
+class TapisAuthExchangeRequest(BaseModel):
+    code: str
+    redirect_uri: str
+
+
+class TapisAuthExchangeResponse(BaseModel):
+    access_token: str
+    username: str
+    expires_at: Optional[int] = None
+
+
 class ExperimentUser(BaseModel):
     user_id: str
     username: Optional[str] = None

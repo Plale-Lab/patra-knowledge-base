@@ -66,6 +66,22 @@ def get_asset_ingest_keys_json() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Tapis OAuth2 (authorization-code redirect login)
+# ---------------------------------------------------------------------------
+
+def get_tapis_tenant_base_url() -> str:
+    return os.getenv("TAPIS_TENANT_BASE_URL", "https://icicleai.tapis.io").rstrip("/")
+
+
+def get_tapis_oauth_client_id() -> str:
+    return os.getenv("TAPIS_OAUTH_CLIENT_ID", "").strip()
+
+
+def get_tapis_oauth_client_key() -> str:
+    return os.getenv("TAPIS_OAUTH_CLIENT_KEY", "").strip()
+
+
+# ---------------------------------------------------------------------------
 # LLM / Agent defaults  (shared across agent-tools and ingestion)
 # ---------------------------------------------------------------------------
 

@@ -9,7 +9,7 @@ import asyncpg
 from rest_server import __version__
 from rest_server.database import close_pool, get_pool, init_pool
 from rest_server.errors import database_unavailable
-from rest_server.routes import agent_tools, ask_patra, assets, datasheets, experiments, hf_import, model_cards, users
+from rest_server.routes import agent_tools, ask_patra, assets, auth, datasheets, experiments, hf_import, model_cards, users
 from shared.config import (
     get_db_startup_timeout_seconds,
     is_ask_patra_enabled,
@@ -54,6 +54,7 @@ app.include_router(datasheets.router)
 app.include_router(assets.router)
 app.include_router(agent_tools.router)
 app.include_router(users.router)
+app.include_router(auth.router)
 
 if is_ask_patra_enabled():
     app.include_router(ask_patra.router)
