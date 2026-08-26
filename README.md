@@ -360,8 +360,6 @@ Key endpoints include:
 | `/device`                                              | POST   | Register an edge device.                                                                                     |
 | `/user`                                                | POST   | Register a user.                                                                                             |
 
-For more information on the legacy REST endpoints, please refer to the [API documentation.](docs/patra_openapi.json)
-
 #### 3. MCP (Model Context Protocol) Server, Suspended
 The in-repo MCP server is Neo4j-backed legacy code retained for reference. It is not part of the active PostgreSQL backend path.
 
