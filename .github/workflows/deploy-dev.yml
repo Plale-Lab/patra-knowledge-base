@@ -20,14 +20,22 @@ jobs:
         run: python3 -m venv ~/.venvs/tapis && ~/.venvs/tapis/bin/pip install --upgrade pip tapipy
 
       # Deliberately NOT build-push-backend.sh -- its hardcoded restart list
-      # includes the prod pods (patra, patrabackend). Call the generic
-      # wrapper directly, scoped to dev only.
-      - name: Build, push, and restart patrabackend-dev
+      # includes the prod pods (patra, patrabackend), and doesn't even
+      # include the dev backend pod. Call the generic wrapper directly,
+      # scoped to dev only.
+      #
+      # The real dev backend pod id is "patrabackenddev" (no hyphen),
+      # confirmed live via tapipy list_pods -- restart_pod 404s on
+      # "patrabackend-dev". Its image field was one-time raw-PUT to
+      # plalelab/patra-backend:latest on 2026-08-26 (tapipy's
+      # update_pod(image=...) silently no-ops, hence the raw PUT), so this
+      # build+push+restart is sufficient going forward.
+      - name: Build, push, and restart patrabackenddev
         env:
           TAPIS_PODS_BASE_URL: ${{ secrets.TAPIS_PODS_BASE_URL }}
           TAPIS_USERNAME: ${{ secrets.TAPIS_USERNAME }}
           TAPIS_PASSWORD: ${{ secrets.TAPIS_PASSWORD }}
           IMAGE: plalelab/patra-backend:latest
           DOCKERFILE: rest_server/Dockerfile
-          PODS: patrabackend-dev
+          PODS: patrabackenddev
         run: bash scripts/build-push-restart-common.sh

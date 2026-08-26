@@ -45,7 +45,7 @@ t = Tapis(base_url=os.environ["TAPIS_PODS_BASE_URL"],
 t.get_tokens()
 print("Authenticated as", os.environ["TAPIS_USERNAME"])
 
-PODS = ["patradb", "patradbeaver", "patrabackend", "patra", "patra-dev"]
+PODS = ["patradb", "patradbeaver", "patrabackend", "patra", "patradev"]
 for pod_id in PODS:
     try:
         result = t.pods.restart_pod(pod_id=pod_id)

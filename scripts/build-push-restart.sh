@@ -10,7 +10,7 @@ set -euo pipefail
 IMAGE="${IMAGE:-plalelab/patra-backend:latest}"
 DOCKERFILE="${DOCKERFILE:-rest_server/Dockerfile}"
 CONTEXT_DIR="${CONTEXT_DIR:-.}"
-PODS="${PODS:-patradb patradbeaver patrabackend patra patra-dev}"
+PODS="${PODS:-patradb patradbeaver patrabackend patra patradev}"
 
 exec "$(dirname "$0")/build-push-restart-common.sh"
 
