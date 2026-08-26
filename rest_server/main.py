@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Patra Privacy API",
+    title="Patra AI Cards API",
     description="API for model cards and datasheets with JWT-aware privacy",
     version=__version__,
     lifespan=lifespan,
@@ -77,7 +77,7 @@ else:
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to the Patra Privacy API", "version": __version__}
+    return {"message": "Welcome to the Patra AI Cards API", "version": __version__}
 
 
 @app.get("/healthz")

@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Patra Privacy API",
+    "title": "Patra AI Cards API",
     "description": "API for model cards and datasheets with JWT-aware privacy",
     "version": "1.0.0"
   },
