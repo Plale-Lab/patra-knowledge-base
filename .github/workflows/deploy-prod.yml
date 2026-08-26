@@ -1,0 +1,63 @@
+name: Deploy backend to prod
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute image tag
+        id: tag
+        run: echo "tag=plalelab/patra-backend:$(date -u +%F)-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        run: |
+          docker build -f rest_server/Dockerfile -t "${{ steps.tag.outputs.tag }}" .
+          docker push "${{ steps.tag.outputs.tag }}"
+
+      - name: Set up tapipy venv
+        run: python3 -m venv ~/.venvs/tapis && ~/.venvs/tapis/bin/pip install --upgrade pip tapipy requests
+
+      # patrabackend (prod) tracks a pinned dated tag, not :latest -- unlike
+      # patrabackenddev/patradev (one-time pinned to :latest on 2026-08-26),
+      # every prod deploy needs its image field updated. tapipy's
+      # update_pod(image=...) silently no-ops on that field, so this uses a
+      # raw HTTP PUT instead (same technique already proven working this
+      # session).
+      - name: Update patrabackend image and restart
+        env:
+          TAPIS_PODS_BASE_URL: ${{ secrets.TAPIS_PODS_BASE_URL }}
+          TAPIS_USERNAME: ${{ secrets.TAPIS_USERNAME }}
+          TAPIS_PASSWORD: ${{ secrets.TAPIS_PASSWORD }}
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          ~/.venvs/tapis/bin/python3 <<'PY'
+          import os, requests
+          from tapipy.tapis import Tapis
+
+          base = os.environ["TAPIS_PODS_BASE_URL"].rstrip("/")
+          t = Tapis(base_url=base, username=os.environ["TAPIS_USERNAME"], password=os.environ["TAPIS_PASSWORD"])
+          t.get_tokens()
+          token = t.access_token.access_token
+
+          resp = requests.put(
+              f"{base}/v3/pods/patrabackend",
+              headers={"X-Tapis-Token": token, "Content-Type": "application/json"},
+              json={"image": os.environ["IMAGE_TAG"]},
+              timeout=30,
+          )
+          resp.raise_for_status()
+          print("image updated:", resp.json())
+
+          result = t.pods.restart_pod(pod_id="patrabackend")
+          print("restart requested:", getattr(result, "status_requested", "unknown"))
+          PY
