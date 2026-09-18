@@ -210,7 +210,7 @@ async def _get_model_card_base_row(conn: asyncpg.Connection, model_card_uuid: UU
     return await conn.fetchrow(
         """
         SELECT mc.id, mc.uuid, mc.name, mc.version, mc.short_description,
-               mc.full_description, mc.keywords, mc.author, mc.citation,
+               mc.full_description, mc.keywords, mc.author, mc.creator_tapis_id, mc.creator_name, mc.citation,
                mc.input_data, mc.input_type, mc.output_data,
                mc.foundational_model, mc.category, mc.documentation,
                mc.is_private, mc.is_gated,
@@ -331,7 +331,7 @@ async def list_model_cards(
     where = f"WHERE {' AND '.join(filters)}" if filters else ""
     params.extend([limit, skip])
     query = f"""
-        SELECT id, uuid, name, category, author, version, short_description, is_gated, is_private, updated_at
+        SELECT id, uuid, name, category, author, creator_tapis_id, creator_name, version, short_description, is_gated, is_private, updated_at
         FROM model_cards
         {where}
         ORDER BY LOWER(name), id
@@ -345,6 +345,8 @@ async def list_model_cards(
             name=r["name"],
             categories=r["category"],
             author=r["author"],
+            creator_tapis_id=r["creator_tapis_id"],
+            creator_name=r["creator_name"],
             version=r["version"],
             short_description=r["short_description"],
             is_gated=r["is_gated"],
@@ -390,6 +392,8 @@ async def get_model_card(
         full_description=model_card_row["full_description"],
         keywords=model_card_row["keywords"],
         author=model_card_row["author"],
+        creator_tapis_id=model_card_row["creator_tapis_id"],
+        creator_name=model_card_row["creator_name"],
         input_data=model_card_row["input_data"],
         output_data=model_card_row["output_data"],
         input_type=model_card_row["input_type"],
@@ -416,6 +420,8 @@ _MC_UPDATE_COLUMNS = {
     "full_description": "full_description",
     "keywords": "keywords",
     "author": "author",
+    "creator_tapis_id": "creator_tapis_id",
+    "creator_name": "creator_name",
     "category": "category",
     "input_type": "input_type",
     "input_data": "input_data",

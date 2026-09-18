@@ -92,6 +92,8 @@ async def list_datasheets(
             d.uuid,
             t.title,
             c.creator,
+            d.creator_tapis_id,
+            d.creator_name,
             s.subject AS category,
             d.is_private,
             d.updated_at
@@ -128,6 +130,8 @@ async def list_datasheets(
             uuid=str(r["uuid"]),
             title=r["title"] or "",
             creator=r["creator"],
+            creator_tapis_id=r["creator_tapis_id"],
+            creator_name=r["creator_name"],
             category=r["category"],
             is_private=bool(r["is_private"]),
             updated_at=r["updated_at"].isoformat() if r["updated_at"] else None,
@@ -168,6 +172,8 @@ async def get_datasheet(
             d.version,
             d.is_private,
             d.updated_at,
+            d.creator_tapis_id,
+            d.creator_name,
             p.name AS publisher_name,
             p.publisher_identifier,
             p.publisher_identifier_scheme,
@@ -322,6 +328,8 @@ async def get_datasheet(
         version=row["version"],
         is_private=row["is_private"],
         updated_at=row["updated_at"].isoformat() if row["updated_at"] else None,
+        creator_tapis_id=row["creator_tapis_id"],
+        creator_name=row["creator_name"],
         creators=[
             DatasheetCreator(
                 creator_name=r["creator_name"],
@@ -454,6 +462,8 @@ _DS_UPDATE_COLUMNS = {
     "version": "version",
     "publication_year": "publication_year",
     "is_private": "is_private",
+    "creator_tapis_id": "creator_tapis_id",
+    "creator_name": "creator_name",
 }
 
 

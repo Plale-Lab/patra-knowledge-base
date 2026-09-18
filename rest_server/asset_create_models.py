@@ -49,6 +49,8 @@ class AssetModelCardCreate(BaseModel):
     full_description: str | None = None
     keywords: str | None = None
     author: str | None = None
+    creator_tapis_id: str = Field(min_length=1)
+    creator_name: str = Field(min_length=1)
     citation: str | None = None
     input_data: str | None = None
     input_type: str | None = None
@@ -63,6 +65,14 @@ class AssetModelCardCreate(BaseModel):
     bias_analysis: dict[str, PrimitiveValue] = Field(default_factory=dict)
     xai_analysis: dict[str, PrimitiveValue] = Field(default_factory=dict)
     model_requirements: list[str] = Field(default_factory=list)
+
+    @field_validator("creator_tapis_id", "creator_name")
+    @classmethod
+    def validate_creator_identity(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("creator identity fields must not be blank")
+        return value
 
     @field_validator("bias_analysis", "xai_analysis")
     @classmethod
@@ -223,6 +233,8 @@ class AssetDatasheetCreate(BaseModel):
     format: str | None = None
     version: str | None = None
     is_private: bool = False
+    creator_tapis_id: str | None = None
+    creator_name: str | None = None
     publisher: AssetPublisherCreate | None = None
     creators: list[AssetDatasheetCreatorCreate] = Field(default_factory=list)
     titles: list[AssetDatasheetTitleCreate] = Field(default_factory=list)

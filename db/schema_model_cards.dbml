@@ -28,6 +28,8 @@ Table model_cards {
   foundational_model text
   category text
   documentation text
+  creator_tapis_id text
+  creator_name text
   model_requirements text[]
   bias_analysis jsonb
   xai_analysis jsonb

@@ -25,6 +25,7 @@ class MockAssetConn:
         # Datasheet identifier resolved for any training_datasheet_uuid
         # lookup; None simulates "no datasheet matches this uuid".
         self.datasheet_identifier_for_uuid: int | None = None
+        self.existing_datasheet_id: int | None = 555
 
     async def fetchrow(self, query: str, *args):
         if "INSERT INTO model_cards" in query:
@@ -39,11 +40,18 @@ class MockAssetConn:
             if self.model_card_duplicate_queue:
                 return {"id": self.model_card_duplicate_queue.pop(0)}
             return None
+        if "FROM datasheets d" in query and "WHERE d.identifier = $1" in query:
+            if self.existing_datasheet_id is None:
+                return None
+            return {"identifier": self.existing_datasheet_id}
         if "FROM datasheets d" in query:
             if self.datasheet_duplicate_queue:
                 return {"identifier": self.datasheet_duplicate_queue.pop(0)}
             return None
         return None
+
+    async def fetch(self, query: str, *args):
+        return []
 
     async def fetchval(self, query: str, *args):
         if "SELECT identifier FROM datasheets WHERE uuid" in query:
@@ -143,6 +151,8 @@ def test_create_model_card_asset_success(asset_client):
             "version": "1.0",
             "short_description": "Injected model card",
             "author": "Org A",
+            "creator_tapis_id": "org-a",
+            "creator_name": "Org A",
             "ai_model": {
                 "name": "External Model Binary",
                 "version": "1.0",
@@ -165,9 +175,19 @@ def test_create_model_card_asset_rejects_invalid_credentials(asset_client):
     response = client.post(
         "/v1/assets/model-cards",
         headers=_asset_headers("wrong-secret"),
-        json={"name": "External Model"},
+        json={"name": "External Model", "creator_tapis_id": "org-a", "creator_name": "Org A"},
     )
     assert response.status_code == 401
+
+
+def test_create_model_card_asset_requires_creator_identity(asset_client):
+    client, _ = asset_client
+    response = client.post(
+        "/v1/assets/model-cards",
+        headers=_asset_headers(),
+        json={"name": "Missing Creator"},
+    )
+    assert response.status_code == 422
 
 
 def test_create_model_card_asset_accepts_tapis_token_without_asset_api_key(asset_client, monkeypatch):
@@ -182,6 +202,8 @@ def test_create_model_card_asset_accepts_tapis_token_without_asset_api_key(asset
             "name": "Frontend Submitted Model",
             "version": "1.0",
             "short_description": "Created from the frontend",
+            "creator_tapis_id": "frontend-user",
+            "creator_name": "Frontend User",
         },
     )
 
@@ -199,6 +221,8 @@ def test_create_model_card_asset_rejects_unsafe_metric_key(asset_client):
         headers=_asset_headers(),
         json={
             "name": "External Model",
+            "creator_tapis_id": "org-a",
+            "creator_name": "Org A",
             "ai_model": {
                 "name": "Binary",
                 "model_metrics": {"bad-key` SET hacked = true": 1},
@@ -216,6 +240,8 @@ def test_create_model_card_asset_with_training_datasheet_uuid_success(asset_clie
         headers=_asset_headers(),
         json={
             "name": "Model With Training Data",
+            "creator_tapis_id": "org-a",
+            "creator_name": "Org A",
             "training_datasheet_uuid": "00000000-0000-4000-8000-000000000055",
         },
     )
@@ -231,6 +257,8 @@ def test_create_model_card_asset_rejects_unknown_training_datasheet_uuid(asset_c
         headers=_asset_headers(),
         json={
             "name": "Model With Bad Training Data",
+            "creator_tapis_id": "org-a",
+            "creator_name": "Org A",
             "training_datasheet_uuid": "00000000-0000-4000-8000-000000000099",
         },
     )
@@ -294,9 +322,42 @@ def test_create_datasheet_asset_duplicate_returns_409(asset_client):
         json={
             "publication_year": 2025,
             "version": "1.0",
+            "creator_tapis_id": "org-a",
+            "creator_name": "Org A",
             "titles": [{"title": "Partner Dataset"}],
             "creators": [{"creator_name": "Org A"}],
         },
     )
     assert response.status_code == 409
     assert "42" in response.json()["detail"]
+
+
+def test_create_datasheet_asset_requires_creator_identity(asset_client):
+    client, _ = asset_client
+    response = client.post(
+        "/v1/assets/datasheets",
+        headers=_asset_headers(),
+        json={"titles": [{"title": "Missing Creator"}]},
+    )
+    assert response.status_code == 422
+
+
+def test_patch_datasheet_creator_identity_preserves_datacite_metadata(asset_client):
+    client, conn = asset_client
+    response = client.patch(
+        "/v1/assets/datasheets/555",
+        headers=_asset_headers(),
+        json={
+            "creator_tapis_id": "swathivm",
+            "creator_name": "Swathi Vallabhajosyula",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["asset_id"] == 555
+    assert any(
+        "UPDATE datasheets" in query
+        and args == (555, "swathivm", "Swathi Vallabhajosyula")
+        for query, args in conn.executed
+    )
+    assert not any("DELETE FROM datasheet_" in query for query, _ in conn.executed)

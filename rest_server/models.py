@@ -13,6 +13,8 @@ class ModelCardSummary(BaseModel):
     name: str
     categories: Optional[str] = None
     author: Optional[str] = None
+    creator_tapis_id: Optional[str] = None
+    creator_name: Optional[str] = None
     version: Optional[str] = None
     short_description: Optional[str] = None
     is_gated: bool = False
@@ -76,6 +78,8 @@ class ModelCardDetail(BaseModel):
     full_description: Optional[str] = None
     keywords: Optional[str] = None
     author: Optional[str] = None
+    creator_tapis_id: Optional[str] = None
+    creator_name: Optional[str] = None
     input_data: Optional[str] = None
     output_data: Optional[str] = None
     input_type: Optional[str] = None
@@ -95,6 +99,8 @@ class ModelCardUpdate(BaseModel):
     full_description: Optional[str] = None
     keywords: Optional[str] = None
     author: Optional[str] = None
+    creator_tapis_id: Optional[str] = None
+    creator_name: Optional[str] = None
     category: Optional[str] = None
     input_type: Optional[str] = None
     input_data: Optional[str] = None
@@ -227,6 +233,8 @@ class DatasheetSummary(BaseModel):
     uuid: str
     title: str
     creator: Optional[str] = None
+    creator_tapis_id: Optional[str] = None
+    creator_name: Optional[str] = None
     category: Optional[str] = None
     is_private: bool = False
     updated_at: Optional[str] = None
@@ -244,6 +252,8 @@ class DatasheetDetail(BaseModel):
     version: Optional[str] = None
     is_private: bool = False
     updated_at: Optional[str] = None
+    creator_tapis_id: Optional[str] = None
+    creator_name: Optional[str] = None
 
     # Nested DataCite-style lists / objects
     creators: list[DatasheetCreator] = []
@@ -266,6 +276,8 @@ class DatasheetUpdate(BaseModel):
     is_private: Optional[bool] = None
     title: Optional[str] = None
     description: Optional[str] = None
+    creator_tapis_id: Optional[str] = None
+    creator_name: Optional[str] = None
 
 
 class EditableRecordSummary(BaseModel):

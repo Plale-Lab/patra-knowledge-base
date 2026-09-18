@@ -42,6 +42,8 @@ Table model_cards {
   foundational_model text
   category text
   documentation text
+  creator_tapis_id text
+  creator_name text
   model_requirements text[]
   bias_analysis jsonb
   xai_analysis jsonb
@@ -63,6 +65,8 @@ Table datasheets {
   format text
   version text
   is_private boolean [not null, default: false]
+  creator_tapis_id text
+  creator_name text
 
   dataset_schema_id bigint [ref: > dataset_schemas.id]
   publisher_id bigint [ref: > datasheet_publishers.id]

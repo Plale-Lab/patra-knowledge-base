@@ -70,6 +70,7 @@ async def _create_model_card_in_tx(
             name, version, uuid, is_private, is_gated,
             short_description, full_description, keywords, author, citation,
             input_data, input_type, output_data, foundational_model, category, documentation,
+            creator_tapis_id, creator_name,
             training_datasheet_id,
             created_at, updated_at
         )
@@ -77,7 +78,8 @@ async def _create_model_card_in_tx(
             $1, $2, COALESCE($3::uuid, gen_random_uuid()), $4, $5,
             $6, $7, $8, $9, $10,
             $11, $12, $13, $14, $15, $16,
-            $17,
+            $17, $18,
+            $19,
             NOW(), NOW()
         )
         RETURNING id, uuid
@@ -98,6 +100,8 @@ async def _create_model_card_in_tx(
         asset.foundational_model,
         asset.category,
         asset.documentation,
+        asset.creator_tapis_id,
+        asset.creator_name,
         training_datasheet_id,
     )
     model_card_id = model_card_row["id"]
@@ -229,6 +233,11 @@ async def _create_datasheet_in_tx(
     asset: AssetDatasheetCreate,
     organization: str,
 ) -> AssetIngestResult:
+    if not (asset.creator_tapis_id or "").strip() or not (asset.creator_name or "").strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="creator_tapis_id and creator_name are required for new datasheets",
+        )
     duplicate_id = await _find_duplicate_datasheet(conn, asset)
     if duplicate_id is not None:
         return AssetIngestResult(
@@ -244,11 +253,11 @@ async def _create_datasheet_in_tx(
         """
         INSERT INTO datasheets (
             uuid, publication_year, resource_type, resource_type_general, size, format, version,
-            is_private, status, created_at, updated_at, publisher_id
+            is_private, status, creator_tapis_id, creator_name, created_at, updated_at, publisher_id
         )
         VALUES (
             COALESCE($1::uuid, gen_random_uuid()), $2, $3, $4, $5, $6, $7,
-            $8, 'approved', NOW(), NOW(), $9
+            $8, 'approved', $9, $10, NOW(), NOW(), $11
         )
         RETURNING identifier, uuid
         """,
@@ -260,6 +269,8 @@ async def _create_datasheet_in_tx(
         asset.format,
         asset.version,
         asset.is_private,
+        asset.creator_tapis_id,
+        asset.creator_name,
         publisher_id,
     )
     datasheet_id = datasheet_row["identifier"]
@@ -526,7 +537,7 @@ async def _fetch_model_card_snapshot(conn: asyncpg.Connection, asset_id: int) ->
     card = await conn.fetchrow(
         """
         SELECT id, uuid, name, version, is_private, is_gated,
-               short_description, full_description, keywords, author, citation,
+               short_description, full_description, keywords, author, creator_tapis_id, creator_name, citation,
                input_data, input_type, output_data, foundational_model, category, documentation,
                created_at, updated_at
         FROM model_cards
@@ -560,7 +571,7 @@ async def _fetch_datasheet_snapshot(conn: asyncpg.Connection, asset_id: int) -> 
     datasheet = await conn.fetchrow(
         """
         SELECT d.identifier, d.uuid, d.publication_year, d.resource_type, d.resource_type_general,
-               d.size, d.format, d.version, d.is_private, d.status, d.created_at, d.updated_at,
+               d.size, d.format, d.version, d.is_private, d.status, d.creator_tapis_id, d.creator_name, d.created_at, d.updated_at,
                d.publisher_id,
                p.name AS publisher_name, p.publisher_identifier, p.publisher_identifier_scheme,
                p.scheme_uri AS publisher_scheme_uri, p.lang AS publisher_lang
@@ -756,6 +767,34 @@ async def _update_datasheet_in_tx(
     if existing is None:
         raise HTTPException(status_code=404, detail="Datasheet not found")
 
+    if not asset.model_fields_set:
+        return AssetUpdateResult(
+            asset_type="datasheet",
+            asset_id=asset_id,
+            organization=organization,
+        )
+
+    # The catalog editor submits sparse patches. Preserve the DataCite graph
+    # when it changes only the card-level creator identity.
+    if asset.model_fields_set and asset.model_fields_set <= {"creator_tapis_id", "creator_name"}:
+        await conn.execute(
+            """
+            UPDATE datasheets
+            SET creator_tapis_id = COALESCE($2, creator_tapis_id),
+                creator_name = COALESCE($3, creator_name),
+                updated_at = NOW()
+            WHERE identifier = $1
+            """,
+            asset_id,
+            asset.creator_tapis_id,
+            asset.creator_name,
+        )
+        return AssetUpdateResult(
+            asset_type="datasheet",
+            asset_id=asset_id,
+            organization=organization,
+        )
+
     publisher_id = await _find_publisher_id(conn, asset.publisher.model_dump(exclude_none=True) if asset.publisher else None)
 
     await conn.execute(
@@ -763,7 +802,10 @@ async def _update_datasheet_in_tx(
         UPDATE datasheets SET
             publication_year = $2, resource_type = $3, resource_type_general = $4,
             size = $5, format = $6, version = $7, is_private = $8,
-            publisher_id = $9, updated_at = NOW()
+            publisher_id = $9,
+            creator_tapis_id = COALESCE($10, creator_tapis_id),
+            creator_name = COALESCE($11, creator_name),
+            updated_at = NOW()
         WHERE identifier = $1
         """,
         asset_id,
@@ -775,6 +817,8 @@ async def _update_datasheet_in_tx(
         asset.version,
         asset.is_private,
         publisher_id,
+        asset.creator_tapis_id,
+        asset.creator_name,
     )
 
     await _replace_datasheet_children(conn, asset_id, asset)
@@ -930,6 +974,3 @@ async def update_datasheet_asset(
     async with pool.acquire() as conn:
         async with conn.transaction():
             return await _update_datasheet_in_tx(conn, asset_id, asset, principal.organization, actor.username)
-
-
-

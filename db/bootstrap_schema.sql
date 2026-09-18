@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS model_cards (
   foundational_model text,
   category text,
   documentation text,
+  creator_tapis_id text,
+  creator_name text,
   created_at timestamptz NOT NULL,
   updated_at timestamptz NOT NULL
 );
@@ -58,6 +60,8 @@ CREATE TABLE IF NOT EXISTS datasheets (
   version text,
   is_private boolean NOT NULL DEFAULT false,
   status approval_status NOT NULL DEFAULT 'pending',
+  creator_tapis_id text,
+  creator_name text,
   created_at timestamptz NOT NULL,
   updated_at timestamptz NOT NULL,
   publisher_id bigint REFERENCES datasheet_publishers(id)
